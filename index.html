@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STR Nomenclature</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f0f2f5;
+    color: #222;
+    padding: 2rem 1rem;
+    min-height: 100vh;
+  }
+
+  .container { max-width: 960px; margin: 0 auto; }
+
+  h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+
+  .field-label {
+    display: block;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: .35rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+
+  textarea {
+    width: 100%;
+    height: 90px;
+    padding: .55rem .75rem;
+    border: 1px solid #d4d4d4;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: .9rem;
+    resize: vertical;
+    outline: none;
+    transition: border-color .15s;
+    color: #222;
+  }
+  textarea:focus { border-color: #4a7ff5; }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: flex-end;
+    margin-top: 1rem;
+  }
+
+  .control-group { display: flex; flex-direction: column; gap: .3rem; }
+
+  input[type=number] {
+    width: 80px;
+    padding: .45rem .6rem;
+    border: 1px solid #d4d4d4;
+    border-radius: 6px;
+    font-size: .9rem;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input[type=number]:focus { border-color: #4a7ff5; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    padding-bottom: .45rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .checkbox-row input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; }
+  .checkbox-row span { font-size: .9rem; }
+
+  button#run-btn {
+    padding: .5rem 1.4rem;
+    background: #4a7ff5;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+    margin-bottom: .45rem;
+  }
+  button#run-btn:hover:not(:disabled) { background: #3366e0; }
+  button#run-btn:disabled { background: #b0b0b0; cursor: default; }
+
+  #status {
+    font-size: .8rem;
+    color: #999;
+    margin-top: .6rem;
+  }
+
+  /* Results */
+  .result-card { background: #fff; border-radius: 10px; padding: 1.4rem 1.5rem;
+                 margin-bottom: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+
+  .result-card h2 { font-size: 1rem; font-weight: 700; margin-bottom: .9rem;
+                    color: #444; border-bottom: 1px solid #eee; padding-bottom: .5rem; }
+
+  .seq-line {
+    font-family: 'Courier New', monospace;
+    font-size: .88rem;
+    color: #666;
+    margin-bottom: .5rem;
+    word-break: break-all;
+  }
+
+  .nomenclature {
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    color: #111;
+    margin-bottom: 1rem;
+    word-break: break-all;
+    line-height: 1.6;
+  }
+
+  pre.visual {
+    font-family: 'Courier New', monospace;
+    font-size: .8rem;
+    line-height: 1.6;
+    background: #f7f8fa;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: .75rem 1rem;
+    overflow-x: auto;
+    margin-bottom: .85rem;
+    white-space: pre;
+  }
+
+  .unique-motifs { font-size: .82rem; color: #555; display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+
+  .motif-chip {
+    display: inline-block;
+    border-radius: 4px;
+    padding: 1px 7px;
+    font-size: .82rem;
+    font-family: 'Courier New', monospace;
+  }
+
+  /* ── Shared tooltip system ───────────────────────────────────────────── */
+  .has-tip { position: relative; cursor: default; }
+
+  .has-tip .tip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e1e2e;
+    color: #e0e0f0;
+    border-radius: 7px;
+    padding: .55rem .85rem;
+    font-size: .78rem;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,.28);
+    z-index: 100;
+    pointer-events: none;
+    line-height: 1.75;
+  }
+  .has-tip .tip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #1e1e2e;
+  }
+  .has-tip:hover .tip { display: block; }
+
+  .has-tip .tip .tip-label {
+    color: #7a7a9a;
+    font-size: .70rem;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: .05rem;
+  }
+  .has-tip .tip .tip-label:not(:first-child) { margin-top: .5rem; }
+
+  /* Colored stretch tokens in the nomenclature line */
+  .nomenclature .stretch { border-radius: 4px; padding: 0 2px; }
+
+  /* Colored spans inside the visual pre block */
+  pre.visual .stretch { border-radius: 2px; }
+
+  /* Legend */
+  details.legend { margin-bottom: 1.25rem; }
+  details.legend summary {
+    background: #fff;
+    border-radius: 10px;
+    padding: .75rem 1.25rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    font-size: .88rem;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    user-select: none;
+  }
+  details.legend summary::-webkit-details-marker { display: none; }
+  details.legend summary::before {
+    content: '▶';
+    font-size: .7rem;
+    transition: transform .15s;
+    color: #4a7ff5;
+  }
+  details.legend[open] summary::before { transform: rotate(90deg); }
+  details.legend .legend-body {
+    background: #fff;
+    border-radius: 0 0 10px 10px;
+    border-top: 1px solid #f0f0f0;
+    padding: 1.1rem 1.25rem 1.25rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+    margin-top: -6px;
+  }
+  .legend-body table {
+    border-collapse: collapse;
+    font-size: .86rem;
+    margin-bottom: 1rem;
+    width: 100%;
+  }
+  .legend-body th {
+    text-align: left;
+    padding: .3rem .7rem .3rem 0;
+    color: #555;
+    font-weight: 600;
+    border-bottom: 1px solid #eee;
+  }
+  .legend-body td {
+    padding: .28rem .7rem .28rem 0;
+    vertical-align: top;
+    color: #333;
+    border-bottom: 1px solid #f5f5f5;
+  }
+  .legend-body td:first-child, .legend-body th:first-child {
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+    color: #1a1a1a;
+  }
+  .legend-body .legend-section { font-weight: 600; color: #444; margin: .8rem 0 .4rem; font-size: .85rem; }
+  .legend-body .legend-note { font-size: .81rem; color: #777; margin-top: .8rem; }
+
+  .notice {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #7a6000;
+    border-radius: 6px;
+    padding: .5rem .9rem;
+    font-size: .82rem;
+    margin-bottom: .8rem;
+  }
+
+  .error-box {
+    background: #fff0f0;
+    border: 1px solid #fcc;
+    color: #b00;
+    border-radius: 6px;
+    padding: .9rem 1.1rem;
+    font-size: .9rem;
+  }
+
+  /* ── Hamming matrix ──────────────────────────────────────────────────── */
+  .matrix-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.4rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .matrix-card h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #444;
+    border-bottom: 1px solid #eee;
+    padding-bottom: .5rem;
+    margin-bottom: .6rem;
+  }
+  .matrix-note {
+    font-size: .8rem;
+    color: #888;
+    margin-bottom: 1.1rem;
+  }
+  .matrix-group { margin-bottom: 1.4rem; }
+  .matrix-group h3 {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    margin-bottom: .55rem;
+  }
+  .matrix-wrap { overflow-x: auto; }
+  .hm-table {
+    border-collapse: collapse;
+    font-size: .78rem;
+    font-family: 'Courier New', monospace;
+  }
+  .hm-table th, .hm-table td {
+    text-align: center;
+    padding: 3px 6px;
+    min-width: 38px;
+    white-space: nowrap;
+  }
+  .hm-table thead th {
+    font-weight: 700;
+    color: #444;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #ddd;
+  }
+  .hm-table thead th:first-child { min-width: 0; }
+  .hm-table tbody th {
+    text-align: right;
+    font-weight: 700;
+    color: #333;
+    padding-right: 10px;
+    border-right: 2px solid #ddd;
+  }
+  .hm-cell { border-radius: 3px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>STR Nomenclature</h1>
+
+  <div class="card">
+    <label class="field-label" for="seq-input">Sequence(s) or nomenclature — one per line</label>
+    <textarea id="seq-input" placeholder="AAGAAGAAGAGAGAG&#10;[AAG]3[AG]4&#10;TGCGAGAAGAAGAAGAAGAGAGAGATTCTTCTTCCCCC"></textarea>
+
+    <div class="controls">
+      <div class="control-group">
+        <span class="field-label">Min repeats</span>
+        <input type="number" id="min-repeats" value="3" min="2" step="1"
+               title="Mono-nucleotide repeats always require at least 5">
+      </div>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="hide-n">
+        <span>Hide N gaps</span>
+      </label>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="full-seq-gaps" checked>
+        <span>Full sequence in gaps</span>
+      </label>
+
+      <label class="checkbox-row">
+        <input type="checkbox" id="strip-ends-n" checked>
+        <span>Strip prefix/suffix N</span>
+      </label>
+
+      <button id="run-btn" disabled>Analyze</button>
+    </div>
+
+    <div id="status">Loading motif database…</div>
+  </div>
+
+  <details class="legend">
+    <summary>Notation guide</summary>
+    <div class="legend-body">
+      <div class="legend-section">Format: <code>[motif&gt;r]<sub>n</sub>.p</code></div>
+      <table>
+        <tr><th>Element</th><th>Meaning</th></tr>
+        <tr><td>[AAG]</td><td>Canonical motif, no rotation</td></tr>
+        <tr><td>[AAG&gt;1]</td><td>Canonical rotated 1 position left: AAG → <b>AGA</b></td></tr>
+        <tr><td>[~AAG]</td><td>Reverse complement of canonical: AAG → <b>CTT</b></td></tr>
+        <tr><td>[~AAG&gt;2]</td><td>RC of canonical rotated 2 left: AAG → GAA → <b>TTC</b></td></tr>
+        <tr><td>]<sub>3</sub></td><td>3 complete repeats</td></tr>
+        <tr><td>]<sub>3.1</sub></td><td>3 complete repeats + 1 partial base</td></tr>
+        <tr><td>[N]<sub>5</sub></td><td>5-base gap between stretches</td></tr>
+        <tr><td>[N]<sub>-2</sub></td><td>2-base overlap between stretches</td></tr>
+        <tr><td>(ACGT)</td><td>Literal gap sequence — shown when <em>Full sequence in gaps</em> is on</td></tr>
+      </table>
+      <div class="legend-section">Options</div>
+      <table>
+        <tr><th>Option</th><th>Effect</th></tr>
+        <tr><td>Hide N gaps</td><td>Suppress all [N] gap/overlap markers</td></tr>
+        <tr><td>Full sequence in gaps</td><td>Show actual bases in (parentheses) instead of [N]<sub>n</sub></td></tr>
+        <tr><td>Strip prefix/suffix N</td><td>Suppress only the leading and trailing [N] markers; keep internal ones</td></tr>
+      </table>
+      <div class="legend-section">Examples</div>
+      <table>
+        <tr><th>Input</th><th>Output</th><th>Notes</th></tr>
+        <tr><td>AAGAAGAAG</td><td>[AAG]<sub>3</sub></td><td>canonical, no rotation</td></tr>
+        <tr><td>AGAAGAAGAA</td><td>[AAG&gt;1]<sub>3.1</sub></td><td>AGA×3 + partial A</td></tr>
+        <tr><td>TTCTTCTTCTTCTT</td><td>[~AAG&gt;2]<sub>4.2</sub></td><td>TTC×4 + partial TT</td></tr>
+        <tr><td>TGCAAGAAGAAG</td><td>(TGC)[AAG]<sub>3</sub></td><td>with <em>Full sequence in gaps</em> on</td></tr>
+        <tr><td>TGCAAGAAGAAG</td><td>[AAG]<sub>3</sub></td><td>with <em>Strip prefix/suffix N</em> on</td></tr>
+      </table>
+      <div class="legend-note">Paste a nomenclature (with plain digits) to convert it back to a sequence. Literal gap sequences in (parentheses) are also expanded.</div>
+    </div>
+  </details>
+
+  <div id="results"></div>
+  <div id="matrix-section"></div>
+</div>
+
+<script>
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const COMPLEMENT   = {A:'T', T:'A', C:'G', G:'C'};
+const MIN_LEN      = {1:5, 2:2, 3:2, 4:2, 5:2, 6:2};
+const ACCEPTED     = new Set(['A','C','G','T','N']);
+// ── Lookup tables (embedded from str_canonical_motifs.tsv) ──────────────────
+// Format: motif → [canonical, is_reverse_complement (0|1)]
+const _RAW = {"A":["A",0],"C":["C",0],"G":["C",1],"T":["A",1],"AC":["AC",0],"AG":["AG",0],"AT":["AT",0],"CA":["AC",0],"CG":["CG",0],"CT":["AG",1],"GA":["AG",0],"GC":["CG",0],"GT":["AC",1],"TA":["AT",0],"TC":["AG",1],"TG":["AC",1],"AAC":["AAC",0],"AAG":["AAG",0],"AAT":["AAT",0],"ACA":["AAC",0],"ACC":["ACC",0],"ACG":["ACG",0],"ACT":["ACT",0],"AGA":["AAG",0],"AGC":["AGC",0],"AGG":["AGG",0],"AGT":["ACT",1],"ATA":["AAT",0],"ATC":["ATC",0],"ATG":["ATC",1],"ATT":["AAT",1],"CAA":["AAC",0],"CAC":["ACC",0],"CAG":["AGC",0],"CAT":["ATC",0],"CCA":["ACC",0],"CCG":["CCG",0],"CCT":["AGG",1],"CGA":["ACG",0],"CGC":["CCG",0],"CGG":["CCG",1],"CGT":["ACG",1],"CTA":["ACT",0],"CTC":["AGG",1],"CTG":["AGC",1],"CTT":["AAG",1],"GAA":["AAG",0],"GAC":["ACG",0],"GAG":["AGG",0],"GAT":["ATC",1],"GCA":["AGC",0],"GCC":["CCG",0],"GCG":["CCG",1],"GCT":["AGC",1],"GGA":["AGG",0],"GGC":["CCG",1],"GGT":["ACC",1],"GTA":["ACT",1],"GTC":["ACG",1],"GTG":["ACC",1],"GTT":["AAC",1],"TAA":["AAT",0],"TAC":["ACT",0],"TAG":["ACT",1],"TAT":["AAT",1],"TCA":["ATC",0],"TCC":["AGG",1],"TCG":["ACG",1],"TCT":["AAG",1],"TGA":["ATC",1],"TGC":["AGC",1],"TGG":["ACC",1],"TGT":["AAC",1],"TTA":["AAT",1],"TTC":["AAG",1],"TTG":["AAC",1],"AAAC":["AAAC",0],"AAAG":["AAAG",0],"AAAT":["AAAT",0],"AACA":["AAAC",0],"AACC":["AACC",0],"AACG":["AACG",0],"AACT":["AACT",0],"AAGA":["AAAG",0],"AAGC":["AAGC",0],"AAGG":["AAGG",0],"AAGT":["AAGT",0],"AATA":["AAAT",0],"AATC":["AATC",0],"AATG":["AATG",0],"AATT":["AATT",0],"ACAA":["AAAC",0],"ACAG":["ACAG",0],"ACAT":["ACAT",0],"ACCA":["AACC",0],"ACCC":["ACCC",0],"ACCG":["ACCG",0],"ACCT":["ACCT",0],"ACGA":["AACG",0],"ACGC":["ACGC",0],"ACGG":["ACGG",0],"ACGT":["ACGT",0],"ACTA":["AACT",0],"ACTC":["ACTC",0],"ACTG":["ACTG",0],"ACTT":["AAGT",1],"AGAA":["AAAG",0],"AGAC":["ACAG",0],"AGAT":["AGAT",0],"AGCA":["AAGC",0],"AGCC":["AGCC",0],"AGCG":["AGCG",0],"AGCT":["AGCT",0],"AGGA":["AAGG",0],"AGGC":["AGGC",0],"AGGG":["AGGG",0],"AGGT":["ACCT",1],"AGTA":["AAGT",0],"AGTC":["ACTG",1],"AGTG":["ACTC",1],"AGTT":["AACT",1],"ATAA":["AAAT",0],"ATAC":["ACAT",0],"ATAG":["AGAT",0],"ATCA":["AATC",0],"ATCC":["ATCC",0],"ATCG":["ATCG",0],"ATCT":["AGAT",1],"ATGA":["AATG",0],"ATGC":["ATGC",0],"ATGG":["ATCC",1],"ATGT":["ACAT",1],"ATTA":["AATT",0],"ATTC":["AATG",1],"ATTG":["AATC",1],"ATTT":["AAAT",1],"CAAA":["AAAC",0],"CAAC":["AACC",0],"CAAG":["AAGC",0],"CAAT":["AATC",0],"CACC":["ACCC",0],"CACG":["ACGC",0],"CACT":["ACTC",0],"CAGA":["ACAG",0],"CAGC":["AGCC",0],"CAGG":["AGGC",0],"CAGT":["ACTG",1],"CATA":["ACAT",0],"CATC":["ATCC",0],"CATG":["ATGC",0],"CATT":["AATG",1],"CCAA":["AACC",0],"CCAC":["ACCC",0],"CCAG":["AGCC",0],"CCAT":["ATCC",0],"CCCA":["ACCC",0],"CCCG":["CCCG",0],"CCCT":["AGGG",1],"CCGA":["ACCG",0],"CCGC":["CCCG",0],"CCGG":["CCGG",0],"CCGT":["ACGG",1],"CCTA":["ACCT",0],"CCTC":["AGGG",1],"CCTG":["AGGC",1],"CCTT":["AAGG",1],"CGAA":["AACG",0],"CGAC":["ACCG",0],"CGAG":["AGCG",0],"CGAT":["ATCG",0],"CGCA":["ACGC",0],"CGCC":["CCCG",0],"CGCT":["AGCG",1],"CGGA":["ACGG",0],"CGGC":["CCGG",0],"CGGG":["CCCG",1],"CGGT":["ACCG",1],"CGTA":["ACGT",0],"CGTC":["ACGG",1],"CGTG":["ACGC",1],"CGTT":["AACG",1],"CTAA":["AACT",0],"CTAC":["ACCT",0],"CTAG":["AGCT",0],"CTAT":["AGAT",1],"CTCA":["ACTC",0],"CTCC":["AGGG",1],"CTCG":["AGCG",1],"CTGA":["ACTG",0],"CTGC":["AGGC",1],"CTGG":["AGCC",1],"CTGT":["ACAG",1],"CTTA":["AAGT",1],"CTTC":["AAGG",1],"CTTG":["AAGC",1],"CTTT":["AAAG",1],"GAAA":["AAAG",0],"GAAC":["AACG",0],"GAAG":["AAGG",0],"GAAT":["AATG",0],"GACA":["ACAG",0],"GACC":["ACCG",0],"GACG":["ACGG",0],"GACT":["ACTG",0],"GAGC":["AGCG",0],"GAGG":["AGGG",0],"GAGT":["ACTC",1],"GATA":["AGAT",0],"GATC":["ATCG",0],"GATG":["ATCC",1],"GATT":["AATC",1],"GCAA":["AAGC",0],"GCAC":["ACGC",0],"GCAG":["AGGC",0],"GCAT":["ATGC",0],"GCCA":["AGCC",0],"GCCC":["CCCG",0],"GCCG":["CCGG",0],"GCCT":["AGGC",1],"GCGA":["AGCG",0],"GCGG":["CCCG",1],"GCGT":["ACGC",1],"GCTA":["AGCT",0],"GCTC":["AGCG",1],"GCTG":["AGCC",1],"GCTT":["AAGC",1],"GGAA":["AAGG",0],"GGAC":["ACGG",0],"GGAG":["AGGG",0],"GGAT":["ATCC",1],"GGCA":["AGGC",0],"GGCC":["CCGG",0],"GGCG":["CCCG",1],"GGCT":["AGCC",1],"GGGA":["AGGG",0],"GGGC":["CCCG",1],"GGGT":["ACCC",1],"GGTA":["ACCT",1],"GGTC":["ACCG",1],"GGTG":["ACCC",1],"GGTT":["AACC",1],"GTAA":["AAGT",0],"GTAC":["ACGT",0],"GTAG":["ACCT",1],"GTAT":["ACAT",1],"GTCA":["ACTG",1],"GTCC":["ACGG",1],"GTCG":["ACCG",1],"GTCT":["ACAG",1],"GTGA":["ACTC",1],"GTGC":["ACGC",1],"GTGG":["ACCC",1],"GTTA":["AACT",1],"GTTC":["AACG",1],"GTTG":["AACC",1],"GTTT":["AAAC",1],"TAAA":["AAAT",0],"TAAC":["AACT",0],"TAAG":["AAGT",0],"TAAT":["AATT",0],"TACA":["ACAT",0],"TACC":["ACCT",0],"TACG":["ACGT",0],"TACT":["AAGT",1],"TAGA":["AGAT",0],"TAGC":["AGCT",0],"TAGG":["ACCT",1],"TAGT":["AACT",1],"TATC":["AGAT",1],"TATG":["ACAT",1],"TATT":["AAAT",1],"TCAA":["AATC",0],"TCAC":["ACTC",0],"TCAG":["ACTG",1],"TCAT":["AATG",1],"TCCA":["ATCC",0],"TCCC":["AGGG",1],"TCCG":["ACGG",1],"TCCT":["AAGG",1],"TCGA":["ATCG",0],"TCGC":["AGCG",1],"TCGG":["ACCG",1],"TCGT":["AACG",1],"TCTA":["AGAT",1],"TCTG":["ACAG",1],"TCTT":["AAAG",1],"TGAA":["AATG",0],"TGAC":["ACTG",0],"TGAG":["ACTC",1],"TGAT":["AATC",1],"TGCA":["ATGC",0],"TGCC":["AGGC",1],"TGCG":["ACGC",1],"TGCT":["AAGC",1],"TGGA":["ATCC",1],"TGGC":["AGCC",1],"TGGG":["ACCC",1],"TGGT":["AACC",1],"TGTA":["ACAT",1],"TGTC":["ACAG",1],"TGTT":["AAAC",1],"TTAA":["AATT",0],"TTAC":["AAGT",1],"TTAG":["AACT",1],"TTAT":["AAAT",1],"TTCA":["AATG",1],"TTCC":["AAGG",1],"TTCG":["AACG",1],"TTCT":["AAAG",1],"TTGA":["AATC",1],"TTGC":["AAGC",1],"TTGG":["AACC",1],"TTGT":["AAAC",1],"TTTA":["AAAT",1],"TTTC":["AAAG",1],"TTTG":["AAAC",1],"AAAAC":["AAAAC",0],"AAAAG":["AAAAG",0],"AAAAT":["AAAAT",0],"AAACA":["AAAAC",0],"AAACC":["AAACC",0],"AAACG":["AAACG",0],"AAACT":["AAACT",0],"AAAGA":["AAAAG",0],"AAAGC":["AAAGC",0],"AAAGG":["AAAGG",0],"AAAGT":["AAAGT",0],"AAATA":["AAAAT",0],"AAATC":["AAATC",0],"AAATG":["AAATG",0],"AAATT":["AAATT",0],"AACAA":["AAAAC",0],"AACAC":["AACAC",0],"AACAG":["AACAG",0],"AACAT":["AACAT",0],"AACCA":["AAACC",0],"AACCC":["AACCC",0],"AACCG":["AACCG",0],"AACCT":["AACCT",0],"AACGA":["AAACG",0],"AACGC":["AACGC",0],"AACGG":["AACGG",0],"AACGT":["AACGT",0],"AACTA":["AAACT",0],"AACTC":["AACTC",0],"AACTG":["AACTG",0],"AACTT":["AACTT",0],"AAGAA":["AAAAG",0],"AAGAC":["AAGAC",0],"AAGAG":["AAGAG",0],"AAGAT":["AAGAT",0],"AAGCA":["AAAGC",0],"AAGCC":["AAGCC",0],"AAGCG":["AAGCG",0],"AAGCT":["AAGCT",0],"AAGGA":["AAAGG",0],"AAGGC":["AAGGC",0],"AAGGG":["AAGGG",0],"AAGGT":["AAGGT",0],"AAGTA":["AAAGT",0],"AAGTC":["AAGTC",0],"AAGTG":["AAGTG",0],"AAGTT":["AACTT",1],"AATAA":["AAAAT",0],"AATAC":["AATAC",0],"AATAG":["AATAG",0],"AATAT":["AATAT",0],"AATCA":["AAATC",0],"AATCC":["AATCC",0],"AATCG":["AATCG",0],"AATCT":["AATCT",0],"AATGA":["AAATG",0],"AATGC":["AATGC",0],"AATGG":["AATGG",0],"AATGT":["AATGT",0],"AATTA":["AAATT",0],"AATTC":["AATTC",0],"AATTG":["AATTC",1],"AATTT":["AAATT",1],"ACAAA":["AAAAC",0],"ACAAC":["AACAC",0],"ACAAG":["AAGAC",0],"ACAAT":["AATAC",0],"ACACA":["AACAC",0],"ACACC":["ACACC",0],"ACACG":["ACACG",0],"ACACT":["ACACT",0],"ACAGA":["AACAG",0],"ACAGC":["ACAGC",0],"ACAGG":["ACAGG",0],"ACAGT":["ACAGT",0],"ACATA":["AACAT",0],"ACATC":["ACATC",0],"ACATG":["ACATG",0],"ACATT":["AATGT",1],"ACCAA":["AAACC",0],"ACCAC":["ACACC",0],"ACCAG":["ACCAG",0],"ACCAT":["ACCAT",0],"ACCCA":["AACCC",0],"ACCCC":["ACCCC",0],"ACCCG":["ACCCG",0],"ACCCT":["ACCCT",0],"ACCGA":["AACCG",0],"ACCGC":["ACCGC",0],"ACCGG":["ACCGG",0],"ACCGT":["ACCGT",0],"ACCTA":["AACCT",0],"ACCTC":["ACCTC",0],"ACCTG":["ACCTG",0],"ACCTT":["AAGGT",1],"ACGAA":["AAACG",0],"ACGAC":["ACACG",0],"ACGAG":["ACGAG",0],"ACGAT":["ACGAT",0],"ACGCA":["AACGC",0],"ACGCC":["ACGCC",0],"ACGCG":["ACGCG",0],"ACGCT":["ACGCT",0],"ACGGA":["AACGG",0],"ACGGC":["ACGGC",0],"ACGGG":["ACGGG",0],"ACGGT":["ACCGT",1],"ACGTA":["AACGT",0],"ACGTC":["ACGTC",0],"ACGTG":["ACGTC",1],"ACGTT":["AACGT",1],"ACTAA":["AAACT",0],"ACTAC":["ACACT",0],"ACTAG":["ACTAG",0],"ACTAT":["ACTAT",0],"ACTCA":["AACTC",0],"ACTCC":["ACTCC",0],"ACTCG":["ACTCG",0],"ACTCT":["ACTCT",0],"ACTGA":["AACTG",0],"ACTGC":["ACTGC",0],"ACTGG":["ACTGG",0],"ACTGT":["ACAGT",1],"ACTTA":["AACTT",0],"ACTTC":["AAGTG",1],"ACTTG":["AAGTC",1],"ACTTT":["AAAGT",1],"AGAAA":["AAAAG",0],"AGAAC":["AACAG",0],"AGAAG":["AAGAG",0],"AGAAT":["AATAG",0],"AGACA":["AAGAC",0],"AGACC":["ACCAG",0],"AGACG":["ACGAG",0],"AGACT":["ACTAG",0],"AGAGA":["AAGAG",0],"AGAGC":["AGAGC",0],"AGAGG":["AGAGG",0],"AGAGT":["ACTCT",1],"AGATA":["AAGAT",0],"AGATC":["AGATC",0],"AGATG":["AGATG",0],"AGATT":["AATCT",1],"AGCAA":["AAAGC",0],"AGCAC":["ACAGC",0],"AGCAG":["AGAGC",0],"AGCAT":["AGCAT",0],"AGCCA":["AAGCC",0],"AGCCC":["AGCCC",0],"AGCCG":["AGCCG",0],"AGCCT":["AGCCT",0],"AGCGA":["AAGCG",0],"AGCGC":["AGCGC",0],"AGCGG":["AGCGG",0],"AGCGT":["ACGCT",1],"AGCTA":["AAGCT",0],"AGCTC":["AGCTC",0],"AGCTG":["AGCTC",1],"AGCTT":["AAGCT",1],"AGGAA":["AAAGG",0],"AGGAC":["ACAGG",0],"AGGAG":["AGAGG",0],"AGGAT":["AGGAT",0],"AGGCA":["AAGGC",0],"AGGCC":["AGGCC",0],"AGGCG":["AGGCG",0],"AGGCT":["AGCCT",1],"AGGGA":["AAGGG",0],"AGGGC":["AGGGC",0],"AGGGG":["AGGGG",0],"AGGGT":["ACCCT",1],"AGGTA":["AAGGT",0],"AGGTC":["ACCTG",1],"AGGTG":["ACCTC",1],"AGGTT":["AACCT",1],"AGTAA":["AAAGT",0],"AGTAC":["ACAGT",0],"AGTAG":["ACTCT",1],"AGTAT":["ACTAT",1],"AGTCA":["AAGTC",0],"AGTCC":["ACTGG",1],"AGTCG":["ACTCG",1],"AGTCT":["ACTAG",1],"AGTGA":["AAGTG",0],"AGTGC":["ACTGC",1],"AGTGG":["ACTCC",1],"AGTGT":["ACACT",1],"AGTTA":["AACTT",1],"AGTTC":["AACTG",1],"AGTTG":["AACTC",1],"AGTTT":["AAACT",1],"ATAAA":["AAAAT",0],"ATAAC":["AACAT",0],"ATAAG":["AAGAT",0],"ATAAT":["AATAT",0],"ATACA":["AATAC",0],"ATACC":["ACCAT",0],"ATACG":["ACGAT",0],"ATACT":["ACTAT",0],"ATAGA":["AATAG",0],"ATAGC":["AGCAT",0],"ATAGG":["AGGAT",0],"ATAGT":["ACTAT",1],"ATATA":["AATAT",0],"ATATC":["ATATC",0],"ATATG":["ATATC",1],"ATATT":["AATAT",1],"ATCAA":["AAATC",0],"ATCAC":["ACATC",0],"ATCAG":["AGATC",0],"ATCAT":["ATATC",0],"ATCCA":["AATCC",0],"ATCCC":["ATCCC",0],"ATCCG":["ATCCG",0],"ATCCT":["AGGAT",1],"ATCGA":["AATCG",0],"ATCGC":["ATCGC",0],"ATCGG":["ATCCG",1],"ATCGT":["ACGAT",1],"ATCTA":["AATCT",0],"ATCTC":["AGATG",1],"ATCTG":["AGATC",1],"ATCTT":["AAGAT",1],"ATGAA":["AAATG",0],"ATGAC":["ACATG",0],"ATGAG":["AGATG",0],"ATGAT":["ATATC",1],"ATGCA":["AATGC",0],"ATGCC":["ATGCC",0],"ATGCG":["ATCGC",1],"ATGCT":["AGCAT",1],"ATGGA":["AATGG",0],"ATGGC":["ATGCC",1],"ATGGG":["ATCCC",1],"ATGGT":["ACCAT",1],"ATGTA":["AATGT",0],"ATGTC":["ACATG",1],"ATGTG":["ACATC",1],"ATGTT":["AACAT",1],"ATTAA":["AAATT",0],"ATTAC":["AATGT",1],"ATTAG":["AATCT",1],"ATTAT":["AATAT",1],"ATTCA":["AATTC",0],"ATTCC":["AATGG",1],"ATTCG":["AATCG",1],"ATTCT":["AATAG",1],"ATTGA":["AATTC",1],"ATTGC":["AATGC",1],"ATTGG":["AATCC",1],"ATTGT":["AATAC",1],"ATTTA":["AAATT",1],"ATTTC":["AAATG",1],"ATTTG":["AAATC",1],"ATTTT":["AAAAT",1],"CAAAA":["AAAAC",0],"CAAAC":["AAACC",0],"CAAAG":["AAAGC",0],"CAAAT":["AAATC",0],"CAACA":["AACAC",0],"CAACC":["AACCC",0],"CAACG":["AACGC",0],"CAACT":["AACTC",0],"CAAGA":["AAGAC",0],"CAAGC":["AAGCC",0],"CAAGG":["AAGGC",0],"CAAGT":["AAGTC",0],"CAATA":["AATAC",0],"CAATC":["AATCC",0],"CAATG":["AATGC",0],"CAATT":["AATTC",0],"CACAA":["AACAC",0],"CACAC":["ACACC",0],"CACAG":["ACAGC",0],"CACAT":["ACATC",0],"CACCA":["ACACC",0],"CACCC":["ACCCC",0],"CACCG":["ACCGC",0],"CACCT":["ACCTC",0],"CACGA":["ACACG",0],"CACGC":["ACGCC",0],"CACGG":["ACGGC",0],"CACGT":["ACGTC",0],"CACTA":["ACACT",0],"CACTC":["ACTCC",0],"CACTG":["ACTGC",0],"CACTT":["AAGTG",1],"CAGAA":["AACAG",0],"CAGAC":["ACCAG",0],"CAGAG":["AGAGC",0],"CAGAT":["AGATC",0],"CAGCA":["ACAGC",0],"CAGCC":["AGCCC",0],"CAGCG":["AGCGC",0],"CAGCT":["AGCTC",0],"CAGGA":["ACAGG",0],"CAGGC":["AGGCC",0],"CAGGG":["AGGGC",0],"CAGGT":["ACCTG",1],"CAGTA":["ACAGT",0],"CAGTC":["ACTGG",1],"CAGTG":["ACTGC",1],"CAGTT":["AACTG",1],"CATAA":["AACAT",0],"CATAC":["ACCAT",0],"CATAG":["AGCAT",0],"CATAT":["ATATC",0],"CATCA":["ACATC",0],"CATCC":["ATCCC",0],"CATCG":["ATCGC",0],"CATCT":["AGATG",1],"CATGA":["ACATG",0],"CATGC":["ATGCC",0],"CATGG":["ATGCC",1],"CATGT":["ACATG",1],"CATTA":["AATGT",1],"CATTC":["AATGG",1],"CATTG":["AATGC",1],"CATTT":["AAATG",1],"CCAAA":["AAACC",0],"CCAAC":["AACCC",0],"CCAAG":["AAGCC",0],"CCAAT":["AATCC",0],"CCACA":["ACACC",0],"CCACC":["ACCCC",0],"CCACG":["ACGCC",0],"CCACT":["ACTCC",0],"CCAGA":["ACCAG",0],"CCAGC":["AGCCC",0],"CCAGG":["AGGCC",0],"CCAGT":["ACTGG",1],"CCATA":["ACCAT",0],"CCATC":["ATCCC",0],"CCATG":["ATGCC",0],"CCATT":["AATGG",1],"CCCAA":["AACCC",0],"CCCAC":["ACCCC",0],"CCCAG":["AGCCC",0],"CCCAT":["ATCCC",0],"CCCCA":["ACCCC",0],"CCCCG":["CCCCG",0],"CCCCT":["AGGGG",1],"CCCGA":["ACCCG",0],"CCCGC":["CCCCG",0],"CCCGG":["CCCGG",0],"CCCGT":["ACGGG",1],"CCCTA":["ACCCT",0],"CCCTC":["AGGGG",1],"CCCTG":["AGGGC",1],"CCCTT":["AAGGG",1],"CCGAA":["AACCG",0],"CCGAC":["ACCCG",0],"CCGAG":["AGCCG",0],"CCGAT":["ATCCG",0],"CCGCA":["ACCGC",0],"CCGCC":["CCCCG",0],"CCGCG":["CCGCG",0],"CCGCT":["AGCGG",1],"CCGGA":["ACCGG",0],"CCGGC":["CCCGG",0],"CCGGG":["CCCGG",1],"CCGGT":["ACCGG",1],"CCGTA":["ACCGT",0],"CCGTC":["ACGGG",1],"CCGTG":["ACGGC",1],"CCGTT":["AACGG",1],"CCTAA":["AACCT",0],"CCTAC":["ACCCT",0],"CCTAG":["AGCCT",0],"CCTAT":["AGGAT",1],"CCTCA":["ACCTC",0],"CCTCC":["AGGGG",1],"CCTCG":["AGGCG",1],"CCTCT":["AGAGG",1],"CCTGA":["ACCTG",0],"CCTGC":["AGGGC",1],"CCTGG":["AGGCC",1],"CCTGT":["ACAGG",1],"CCTTA":["AAGGT",1],"CCTTC":["AAGGG",1],"CCTTG":["AAGGC",1],"CCTTT":["AAAGG",1],"CGAAA":["AAACG",0],"CGAAC":["AACCG",0],"CGAAG":["AAGCG",0],"CGAAT":["AATCG",0],"CGACA":["ACACG",0],"CGACC":["ACCCG",0],"CGACG":["ACGCG",0],"CGACT":["ACTCG",0],"CGAGA":["ACGAG",0],"CGAGC":["AGCCG",0],"CGAGG":["AGGCG",0],"CGAGT":["ACTCG",1],"CGATA":["ACGAT",0],"CGATC":["ATCCG",0],"CGATG":["ATCGC",1],"CGATT":["AATCG",1],"CGCAA":["AACGC",0],"CGCAC":["ACCGC",0],"CGCAG":["AGCGC",0],"CGCAT":["ATCGC",0],"CGCCA":["ACGCC",0],"CGCCC":["CCCCG",0],"CGCCG":["CCGCG",0],"CGCCT":["AGGCG",1],"CGCGA":["ACGCG",0],"CGCGC":["CCGCG",0],"CGCGG":["CCGCG",1],"CGCGT":["ACGCG",1],"CGCTA":["ACGCT",0],"CGCTC":["AGCGG",1],"CGCTG":["AGCGC",1],"CGCTT":["AAGCG",1],"CGGAA":["AACGG",0],"CGGAC":["ACCGG",0],"CGGAG":["AGCGG",0],"CGGAT":["ATCCG",1],"CGGCA":["ACGGC",0],"CGGCC":["CCCGG",0],"CGGCG":["CCGCG",1],"CGGCT":["AGCCG",1],"CGGGA":["ACGGG",0],"CGGGC":["CCCGG",1],"CGGGG":["CCCCG",1],"CGGGT":["ACCCG",1],"CGGTA":["ACCGT",1],"CGGTC":["ACCGG",1],"CGGTG":["ACCGC",1],"CGGTT":["AACCG",1],"CGTAA":["AACGT",0],"CGTAC":["ACCGT",0],"CGTAG":["ACGCT",1],"CGTAT":["ACGAT",1],"CGTCA":["ACGTC",0],"CGTCC":["ACGGG",1],"CGTCG":["ACGCG",1],"CGTCT":["ACGAG",1],"CGTGA":["ACGTC",1],"CGTGC":["ACGGC",1],"CGTGG":["ACGCC",1],"CGTGT":["ACACG",1],"CGTTA":["AACGT",1],"CGTTC":["AACGG",1],"CGTTG":["AACGC",1],"CGTTT":["AAACG",1],"CTAAA":["AAACT",0],"CTAAC":["AACCT",0],"CTAAG":["AAGCT",0],"CTAAT":["AATCT",0],"CTACA":["ACACT",0],"CTACC":["ACCCT",0],"CTACG":["ACGCT",0],"CTACT":["ACTCT",0],"CTAGA":["ACTAG",0],"CTAGC":["AGCCT",0],"CTAGG":["AGCCT",1],"CTAGT":["ACTAG",1],"CTATA":["ACTAT",0],"CTATC":["AGGAT",1],"CTATG":["AGCAT",1],"CTATT":["AATAG",1],"CTCAA":["AACTC",0],"CTCAC":["ACCTC",0],"CTCAG":["AGCTC",0],"CTCAT":["AGATG",1],"CTCCA":["ACTCC",0],"CTCCC":["AGGGG",1],"CTCCG":["AGCGG",1],"CTCCT":["AGAGG",1],"CTCGA":["ACTCG",0],"CTCGC":["AGGCG",1],"CTCGG":["AGCCG",1],"CTCGT":["ACGAG",1],"CTCTA":["ACTCT",0],"CTCTC":["AGAGG",1],"CTCTG":["AGAGC",1],"CTCTT":["AAGAG",1],"CTGAA":["AACTG",0],"CTGAC":["ACCTG",0],"CTGAG":["AGCTC",1],"CTGAT":["AGATC",1],"CTGCA":["ACTGC",0],"CTGCC":["AGGGC",1],"CTGCG":["AGCGC",1],"CTGCT":["AGAGC",1],"CTGGA":["ACTGG",0],"CTGGC":["AGGCC",1],"CTGGG":["AGCCC",1],"CTGGT":["ACCAG",1],"CTGTA":["ACAGT",1],"CTGTC":["ACAGG",1],"CTGTG":["ACAGC",1],"CTGTT":["AACAG",1],"CTTAA":["AACTT",0],"CTTAC":["AAGGT",1],"CTTAG":["AAGCT",1],"CTTAT":["AAGAT",1],"CTTCA":["AAGTG",1],"CTTCC":["AAGGG",1],"CTTCG":["AAGCG",1],"CTTCT":["AAGAG",1],"CTTGA":["AAGTC",1],"CTTGC":["AAGGC",1],"CTTGG":["AAGCC",1],"CTTGT":["AAGAC",1],"CTTTA":["AAAGT",1],"CTTTC":["AAAGG",1],"CTTTG":["AAAGC",1],"CTTTT":["AAAAG",1],"GAAAA":["AAAAG",0],"GAAAC":["AAACG",0],"GAAAG":["AAAGG",0],"GAAAT":["AAATG",0],"GAACA":["AACAG",0],"GAACC":["AACCG",0],"GAACG":["AACGG",0],"GAACT":["AACTG",0],"GAAGA":["AAGAG",0],"GAAGC":["AAGCG",0],"GAAGG":["AAGGG",0],"GAAGT":["AAGTG",0],"GAATA":["AATAG",0],"GAATC":["AATCG",0],"GAATG":["AATGG",0],"GAATT":["AATTC",1],"GACAA":["AAGAC",0],"GACAC":["ACACG",0],"GACAG":["ACAGG",0],"GACAT":["ACATG",0],"GACCA":["ACCAG",0],"GACCC":["ACCCG",0],"GACCG":["ACCGG",0],"GACCT":["ACCTG",0],"GACGA":["ACGAG",0],"GACGC":["ACGCG",0],"GACGG":["ACGGG",0],"GACGT":["ACGTC",1],"GACTA":["ACTAG",0],"GACTC":["ACTCG",0],"GACTG":["ACTGG",0],"GACTT":["AAGTC",1],"GAGAA":["AAGAG",0],"GAGAC":["ACGAG",0],"GAGAG":["AGAGG",0],"GAGAT":["AGATG",0],"GAGCA":["AGAGC",0],"GAGCC":["AGCCG",0],"GAGCG":["AGCGG",0],"GAGCT":["AGCTC",1],"GAGGA":["AGAGG",0],"GAGGC":["AGGCG",0],"GAGGG":["AGGGG",0],"GAGGT":["ACCTC",1],"GAGTA":["ACTCT",1],"GAGTC":["ACTCG",1],"GAGTG":["ACTCC",1],"GAGTT":["AACTC",1],"GATAA":["AAGAT",0],"GATAC":["ACGAT",0],"GATAG":["AGGAT",0],"GATAT":["ATATC",1],"GATCA":["AGATC",0],"GATCC":["ATCCG",0],"GATCG":["ATCCG",1],"GATCT":["AGATC",1],"GATGA":["AGATG",0],"GATGC":["ATCGC",1],"GATGG":["ATCCC",1],"GATGT":["ACATC",1],"GATTA":["AATCT",1],"GATTC":["AATCG",1],"GATTG":["AATCC",1],"GATTT":["AAATC",1],"GCAAA":["AAAGC",0],"GCAAC":["AACGC",0],"GCAAG":["AAGGC",0],"GCAAT":["AATGC",0],"GCACA":["ACAGC",0],"GCACC":["ACCGC",0],"GCACG":["ACGGC",0],"GCACT":["ACTGC",0],"GCAGA":["AGAGC",0],"GCAGC":["AGCGC",0],"GCAGG":["AGGGC",0],"GCAGT":["ACTGC",1],"GCATA":["AGCAT",0],"GCATC":["ATCGC",0],"GCATG":["ATGCC",1],"GCATT":["AATGC",1],"GCCAA":["AAGCC",0],"GCCAC":["ACGCC",0],"GCCAG":["AGGCC",0],"GCCAT":["ATGCC",0],"GCCCA":["AGCCC",0],"GCCCC":["CCCCG",0],"GCCCG":["CCCGG",0],"GCCCT":["AGGGC",1],"GCCGA":["AGCCG",0],"GCCGC":["CCGCG",0],"GCCGG":["CCCGG",1],"GCCGT":["ACGGC",1],"GCCTA":["AGCCT",0],"GCCTC":["AGGCG",1],"GCCTG":["AGGCC",1],"GCCTT":["AAGGC",1],"GCGAA":["AAGCG",0],"GCGAC":["ACGCG",0],"GCGAG":["AGGCG",0],"GCGAT":["ATCGC",1],"GCGCA":["AGCGC",0],"GCGCC":["CCGCG",0],"GCGCG":["CCGCG",1],"GCGCT":["AGCGC",1],"GCGGA":["AGCGG",0],"GCGGC":["CCGCG",1],"GCGGG":["CCCCG",1],"GCGGT":["ACCGC",1],"GCGTA":["ACGCT",1],"GCGTC":["ACGCG",1],"GCGTG":["ACGCC",1],"GCGTT":["AACGC",1],"GCTAA":["AAGCT",0],"GCTAC":["ACGCT",0],"GCTAG":["AGCCT",1],"GCTAT":["AGCAT",1],"GCTCA":["AGCTC",0],"GCTCC":["AGCGG",1],"GCTCG":["AGCCG",1],"GCTCT":["AGAGC",1],"GCTGA":["AGCTC",1],"GCTGC":["AGCGC",1],"GCTGG":["AGCCC",1],"GCTGT":["ACAGC",1],"GCTTA":["AAGCT",1],"GCTTC":["AAGCG",1],"GCTTG":["AAGCC",1],"GCTTT":["AAAGC",1],"GGAAA":["AAAGG",0],"GGAAC":["AACGG",0],"GGAAG":["AAGGG",0],"GGAAT":["AATGG",0],"GGACA":["ACAGG",0],"GGACC":["ACCGG",0],"GGACG":["ACGGG",0],"GGACT":["ACTGG",0],"GGAGA":["AGAGG",0],"GGAGC":["AGCGG",0],"GGAGG":["AGGGG",0],"GGAGT":["ACTCC",1],"GGATA":["AGGAT",0],"GGATC":["ATCCG",1],"GGATG":["ATCCC",1],"GGATT":["AATCC",1],"GGCAA":["AAGGC",0],"GGCAC":["ACGGC",0],"GGCAG":["AGGGC",0],"GGCAT":["ATGCC",1],"GGCCA":["AGGCC",0],"GGCCC":["CCCGG",0],"GGCCG":["CCCGG",1],"GGCCT":["AGGCC",1],"GGCGA":["AGGCG",0],"GGCGC":["CCGCG",1],"GGCGG":["CCCCG",1],"GGCGT":["ACGCC",1],"GGCTA":["AGCCT",1],"GGCTC":["AGCCG",1],"GGCTG":["AGCCC",1],"GGCTT":["AAGCC",1],"GGGAA":["AAGGG",0],"GGGAC":["ACGGG",0],"GGGAG":["AGGGG",0],"GGGAT":["ATCCC",1],"GGGCA":["AGGGC",0],"GGGCC":["CCCGG",1],"GGGCG":["CCCCG",1],"GGGCT":["AGCCC",1],"GGGGA":["AGGGG",0],"GGGGC":["CCCCG",1],"GGGGT":["ACCCC",1],"GGGTA":["ACCCT",1],"GGGTC":["ACCCG",1],"GGGTG":["ACCCC",1],"GGGTT":["AACCC",1],"GGTAA":["AAGGT",0],"GGTAC":["ACCGT",1],"GGTAG":["ACCCT",1],"GGTAT":["ACCAT",1],"GGTCA":["ACCTG",1],"GGTCC":["ACCGG",1],"GGTCG":["ACCCG",1],"GGTCT":["ACCAG",1],"GGTGA":["ACCTC",1],"GGTGC":["ACCGC",1],"GGTGG":["ACCCC",1],"GGTGT":["ACACC",1],"GGTTA":["AACCT",1],"GGTTC":["AACCG",1],"GGTTG":["AACCC",1],"GGTTT":["AAACC",1],"GTAAA":["AAAGT",0],"GTAAC":["AACGT",0],"GTAAG":["AAGGT",0],"GTAAT":["AATGT",0],"GTACA":["ACAGT",0],"GTACC":["ACCGT",0],"GTACG":["ACCGT",1],"GTACT":["ACAGT",1],"GTAGA":["ACTCT",1],"GTAGC":["ACGCT",1],"GTAGG":["ACCCT",1],"GTAGT":["ACACT",1],"GTATA":["ACTAT",1],"GTATC":["ACGAT",1],"GTATG":["ACCAT",1],"GTATT":["AATAC",1],"GTCAA":["AAGTC",0],"GTCAC":["ACGTC",0],"GTCAG":["ACCTG",1],"GTCAT":["ACATG",1],"GTCCA":["ACTGG",1],"GTCCC":["ACGGG",1],"GTCCG":["ACCGG",1],"GTCCT":["ACAGG",1],"GTCGA":["ACTCG",1],"GTCGC":["ACGCG",1],"GTCGG":["ACCCG",1],"GTCGT":["ACACG",1],"GTCTA":["ACTAG",1],"GTCTC":["ACGAG",1],"GTCTG":["ACCAG",1],"GTCTT":["AAGAC",1],"GTGAA":["AAGTG",0],"GTGAC":["ACGTC",1],"GTGAG":["ACCTC",1],"GTGAT":["ACATC",1],"GTGCA":["ACTGC",1],"GTGCC":["ACGGC",1],"GTGCG":["ACCGC",1],"GTGCT":["ACAGC",1],"GTGGA":["ACTCC",1],"GTGGC":["ACGCC",1],"GTGGG":["ACCCC",1],"GTGGT":["ACACC",1],"GTGTA":["ACACT",1],"GTGTC":["ACACG",1],"GTGTG":["ACACC",1],"GTGTT":["AACAC",1],"GTTAA":["AACTT",1],"GTTAC":["AACGT",1],"GTTAG":["AACCT",1],"GTTAT":["AACAT",1],"GTTCA":["AACTG",1],"GTTCC":["AACGG",1],"GTTCG":["AACCG",1],"GTTCT":["AACAG",1],"GTTGA":["AACTC",1],"GTTGC":["AACGC",1],"GTTGG":["AACCC",1],"GTTGT":["AACAC",1],"GTTTA":["AAACT",1],"GTTTC":["AAACG",1],"GTTTG":["AAACC",1],"GTTTT":["AAAAC",1],"TAAAA":["AAAAT",0],"TAAAC":["AAACT",0],"TAAAG":["AAAGT",0],"TAAAT":["AAATT",0],"TAACA":["AACAT",0],"TAACC":["AACCT",0],"TAACG":["AACGT",0],"TAACT":["AACTT",0],"TAAGA":["AAGAT",0],"TAAGC":["AAGCT",0],"TAAGG":["AAGGT",0],"TAAGT":["AACTT",1],"TAATA":["AATAT",0],"TAATC":["AATCT",0],"TAATG":["AATGT",0],"TAATT":["AAATT",1],"TACAA":["AATAC",0],"TACAC":["ACACT",0],"TACAG":["ACAGT",0],"TACAT":["AATGT",1],"TACCA":["ACCAT",0],"TACCC":["ACCCT",0],"TACCG":["ACCGT",0],"TACCT":["AAGGT",1],"TACGA":["ACGAT",0],"TACGC":["ACGCT",0],"TACGG":["ACCGT",1],"TACGT":["AACGT",1],"TACTA":["ACTAT",0],"TACTC":["ACTCT",0],"TACTG":["ACAGT",1],"TACTT":["AAAGT",1],"TAGAA":["AATAG",0],"TAGAC":["ACTAG",0],"TAGAG":["ACTCT",1],"TAGAT":["AATCT",1],"TAGCA":["AGCAT",0],"TAGCC":["AGCCT",0],"TAGCG":["ACGCT",1],"TAGCT":["AAGCT",1],"TAGGA":["AGGAT",0],"TAGGC":["AGCCT",1],"TAGGG":["ACCCT",1],"TAGGT":["AACCT",1],"TAGTA":["ACTAT",1],"TAGTC":["ACTAG",1],"TAGTG":["ACACT",1],"TAGTT":["AAACT",1],"TATAA":["AATAT",0],"TATAC":["ACTAT",0],"TATAG":["ACTAT",1],"TATAT":["AATAT",1],"TATCA":["ATATC",0],"TATCC":["AGGAT",1],"TATCG":["ACGAT",1],"TATCT":["AAGAT",1],"TATGA":["ATATC",1],"TATGC":["AGCAT",1],"TATGG":["ACCAT",1],"TATGT":["AACAT",1],"TATTA":["AATAT",1],"TATTC":["AATAG",1],"TATTG":["AATAC",1],"TATTT":["AAAAT",1],"TCAAA":["AAATC",0],"TCAAC":["AACTC",0],"TCAAG":["AAGTC",0],"TCAAT":["AATTC",0],"TCACA":["ACATC",0],"TCACC":["ACCTC",0],"TCACG":["ACGTC",0],"TCACT":["AAGTG",1],"TCAGA":["AGATC",0],"TCAGC":["AGCTC",0],"TCAGG":["ACCTG",1],"TCAGT":["AACTG",1],"TCATA":["ATATC",0],"TCATC":["AGATG",1],"TCATG":["ACATG",1],"TCATT":["AAATG",1],"TCCAA":["AATCC",0],"TCCAC":["ACTCC",0],"TCCAG":["ACTGG",1],"TCCAT":["AATGG",1],"TCCCA":["ATCCC",0],"TCCCC":["AGGGG",1],"TCCCG":["ACGGG",1],"TCCCT":["AAGGG",1],"TCCGA":["ATCCG",0],"TCCGC":["AGCGG",1],"TCCGG":["ACCGG",1],"TCCGT":["AACGG",1],"TCCTA":["AGGAT",1],"TCCTC":["AGAGG",1],"TCCTG":["ACAGG",1],"TCCTT":["AAAGG",1],"TCGAA":["AATCG",0],"TCGAC":["ACTCG",0],"TCGAG":["ACTCG",1],"TCGAT":["AATCG",1],"TCGCA":["ATCGC",0],"TCGCC":["AGGCG",1],"TCGCG":["ACGCG",1],"TCGCT":["AAGCG",1],"TCGGA":["ATCCG",1],"TCGGC":["AGCCG",1],"TCGGG":["ACCCG",1],"TCGGT":["AACCG",1],"TCGTA":["ACGAT",1],"TCGTC":["ACGAG",1],"TCGTG":["ACACG",1],"TCGTT":["AAACG",1],"TCTAA":["AATCT",0],"TCTAC":["ACTCT",0],"TCTAG":["ACTAG",1],"TCTAT":["AATAG",1],"TCTCA":["AGATG",1],"TCTCC":["AGAGG",1],"TCTCG":["ACGAG",1],"TCTCT":["AAGAG",1],"TCTGA":["AGATC",1],"TCTGC":["AGAGC",1],"TCTGG":["ACCAG",1],"TCTGT":["AACAG",1],"TCTTA":["AAGAT",1],"TCTTC":["AAGAG",1],"TCTTG":["AAGAC",1],"TCTTT":["AAAAG",1],"TGAAA":["AAATG",0],"TGAAC":["AACTG",0],"TGAAG":["AAGTG",0],"TGAAT":["AATTC",1],"TGACA":["ACATG",0],"TGACC":["ACCTG",0],"TGACG":["ACGTC",1],"TGACT":["AAGTC",1],"TGAGA":["AGATG",0],"TGAGC":["AGCTC",1],"TGAGG":["ACCTC",1],"TGAGT":["AACTC",1],"TGATA":["ATATC",1],"TGATC":["AGATC",1],"TGATG":["ACATC",1],"TGATT":["AAATC",1],"TGCAA":["AATGC",0],"TGCAC":["ACTGC",0],"TGCAG":["ACTGC",1],"TGCAT":["AATGC",1],"TGCCA":["ATGCC",0],"TGCCC":["AGGGC",1],"TGCCG":["ACGGC",1],"TGCCT":["AAGGC",1],"TGCGA":["ATCGC",1],"TGCGC":["AGCGC",1],"TGCGG":["ACCGC",1],"TGCGT":["AACGC",1],"TGCTA":["AGCAT",1],"TGCTC":["AGAGC",1],"TGCTG":["ACAGC",1],"TGCTT":["AAAGC",1],"TGGAA":["AATGG",0],"TGGAC":["ACTGG",0],"TGGAG":["ACTCC",1],"TGGAT":["AATCC",1],"TGGCA":["ATGCC",1],"TGGCC":["AGGCC",1],"TGGCG":["ACGCC",1],"TGGCT":["AAGCC",1],"TGGGA":["ATCCC",1],"TGGGC":["AGCCC",1],"TGGGG":["ACCCC",1],"TGGGT":["AACCC",1],"TGGTA":["ACCAT",1],"TGGTC":["ACCAG",1],"TGGTG":["ACACC",1],"TGGTT":["AAACC",1],"TGTAA":["AATGT",0],"TGTAC":["ACAGT",1],"TGTAG":["ACACT",1],"TGTAT":["AATAC",1],"TGTCA":["ACATG",1],"TGTCC":["ACAGG",1],"TGTCG":["ACACG",1],"TGTCT":["AAGAC",1],"TGTGA":["ACATC",1],"TGTGC":["ACAGC",1],"TGTGG":["ACACC",1],"TGTGT":["AACAC",1],"TGTTA":["AACAT",1],"TGTTC":["AACAG",1],"TGTTG":["AACAC",1],"TGTTT":["AAAAC",1],"TTAAA":["AAATT",0],"TTAAC":["AACTT",0],"TTAAG":["AACTT",1],"TTAAT":["AAATT",1],"TTACA":["AATGT",1],"TTACC":["AAGGT",1],"TTACG":["AACGT",1],"TTACT":["AAAGT",1],"TTAGA":["AATCT",1],"TTAGC":["AAGCT",1],"TTAGG":["AACCT",1],"TTAGT":["AAACT",1],"TTATA":["AATAT",1],"TTATC":["AAGAT",1],"TTATG":["AACAT",1],"TTATT":["AAAAT",1],"TTCAA":["AATTC",0],"TTCAC":["AAGTG",1],"TTCAG":["AACTG",1],"TTCAT":["AAATG",1],"TTCCA":["AATGG",1],"TTCCC":["AAGGG",1],"TTCCG":["AACGG",1],"TTCCT":["AAAGG",1],"TTCGA":["AATCG",1],"TTCGC":["AAGCG",1],"TTCGG":["AACCG",1],"TTCGT":["AAACG",1],"TTCTA":["AATAG",1],"TTCTC":["AAGAG",1],"TTCTG":["AACAG",1],"TTCTT":["AAAAG",1],"TTGAA":["AATTC",1],"TTGAC":["AAGTC",1],"TTGAG":["AACTC",1],"TTGAT":["AAATC",1],"TTGCA":["AATGC",1],"TTGCC":["AAGGC",1],"TTGCG":["AACGC",1],"TTGCT":["AAAGC",1],"TTGGA":["AATCC",1],"TTGGC":["AAGCC",1],"TTGGG":["AACCC",1],"TTGGT":["AAACC",1],"TTGTA":["AATAC",1],"TTGTC":["AAGAC",1],"TTGTG":["AACAC",1],"TTGTT":["AAAAC",1],"TTTAA":["AAATT",1],"TTTAC":["AAAGT",1],"TTTAG":["AAACT",1],"TTTAT":["AAAAT",1],"TTTCA":["AAATG",1],"TTTCC":["AAAGG",1],"TTTCG":["AAACG",1],"TTTCT":["AAAAG",1],"TTTGA":["AAATC",1],"TTTGC":["AAAGC",1],"TTTGG":["AAACC",1],"TTTGT":["AAAAC",1],"TTTTA":["AAAAT",1],"TTTTC":["AAAAG",1],"TTTTG":["AAAAC",1],"AAAAAC":["AAAAAC",0],"AAAAAG":["AAAAAG",0],"AAAAAT":["AAAAAT",0],"AAAACA":["AAAAAC",0],"AAAACC":["AAAACC",0],"AAAACG":["AAAACG",0],"AAAACT":["AAAACT",0],"AAAAGA":["AAAAAG",0],"AAAAGC":["AAAAGC",0],"AAAAGG":["AAAAGG",0],"AAAAGT":["AAAAGT",0],"AAAATA":["AAAAAT",0],"AAAATC":["AAAATC",0],"AAAATG":["AAAATG",0],"AAAATT":["AAAATT",0],"AAACAA":["AAAAAC",0],"AAACAC":["AAACAC",0],"AAACAG":["AAACAG",0],"AAACAT":["AAACAT",0],"AAACCA":["AAAACC",0],"AAACCC":["AAACCC",0],"AAACCG":["AAACCG",0],"AAACCT":["AAACCT",0],"AAACGA":["AAAACG",0],"AAACGC":["AAACGC",0],"AAACGG":["AAACGG",0],"AAACGT":["AAACGT",0],"AAACTA":["AAAACT",0],"AAACTC":["AAACTC",0],"AAACTG":["AAACTG",0],"AAACTT":["AAACTT",0],"AAAGAA":["AAAAAG",0],"AAAGAC":["AAAGAC",0],"AAAGAG":["AAAGAG",0],"AAAGAT":["AAAGAT",0],"AAAGCA":["AAAAGC",0],"AAAGCC":["AAAGCC",0],"AAAGCG":["AAAGCG",0],"AAAGCT":["AAAGCT",0],"AAAGGA":["AAAAGG",0],"AAAGGC":["AAAGGC",0],"AAAGGG":["AAAGGG",0],"AAAGGT":["AAAGGT",0],"AAAGTA":["AAAAGT",0],"AAAGTC":["AAAGTC",0],"AAAGTG":["AAAGTG",0],"AAAGTT":["AAAGTT",0],"AAATAA":["AAAAAT",0],"AAATAC":["AAATAC",0],"AAATAG":["AAATAG",0],"AAATAT":["AAATAT",0],"AAATCA":["AAAATC",0],"AAATCC":["AAATCC",0],"AAATCG":["AAATCG",0],"AAATCT":["AAATCT",0],"AAATGA":["AAAATG",0],"AAATGC":["AAATGC",0],"AAATGG":["AAATGG",0],"AAATGT":["AAATGT",0],"AAATTA":["AAAATT",0],"AAATTC":["AAATTC",0],"AAATTG":["AAATTG",0],"AAATTT":["AAATTT",0],"AACAAA":["AAAAAC",0],"AACAAG":["AACAAG",0],"AACAAT":["AACAAT",0],"AACACA":["AAACAC",0],"AACACC":["AACACC",0],"AACACG":["AACACG",0],"AACACT":["AACACT",0],"AACAGA":["AAACAG",0],"AACAGC":["AACAGC",0],"AACAGG":["AACAGG",0],"AACAGT":["AACAGT",0],"AACATA":["AAACAT",0],"AACATC":["AACATC",0],"AACATG":["AACATG",0],"AACATT":["AACATT",0],"AACCAA":["AAAACC",0],"AACCAC":["AACCAC",0],"AACCAG":["AACCAG",0],"AACCAT":["AACCAT",0],"AACCCA":["AAACCC",0],"AACCCC":["AACCCC",0],"AACCCG":["AACCCG",0],"AACCCT":["AACCCT",0],"AACCGA":["AAACCG",0],"AACCGC":["AACCGC",0],"AACCGG":["AACCGG",0],"AACCGT":["AACCGT",0],"AACCTA":["AAACCT",0],"AACCTC":["AACCTC",0],"AACCTG":["AACCTG",0],"AACCTT":["AACCTT",0],"AACGAA":["AAAACG",0],"AACGAC":["AACGAC",0],"AACGAG":["AACGAG",0],"AACGAT":["AACGAT",0],"AACGCA":["AAACGC",0],"AACGCC":["AACGCC",0],"AACGCG":["AACGCG",0],"AACGCT":["AACGCT",0],"AACGGA":["AAACGG",0],"AACGGC":["AACGGC",0],"AACGGG":["AACGGG",0],"AACGGT":["AACGGT",0],"AACGTA":["AAACGT",0],"AACGTC":["AACGTC",0],"AACGTG":["AACGTG",0],"AACGTT":["AACGTT",0],"AACTAA":["AAAACT",0],"AACTAC":["AACTAC",0],"AACTAG":["AACTAG",0],"AACTAT":["AACTAT",0],"AACTCA":["AAACTC",0],"AACTCC":["AACTCC",0],"AACTCG":["AACTCG",0],"AACTCT":["AACTCT",0],"AACTGA":["AAACTG",0],"AACTGC":["AACTGC",0],"AACTGG":["AACTGG",0],"AACTGT":["AACTGT",0],"AACTTA":["AAACTT",0],"AACTTC":["AACTTC",0],"AACTTG":["AACTTG",0],"AACTTT":["AAAGTT",1],"AAGAAA":["AAAAAG",0],"AAGAAC":["AACAAG",0],"AAGAAT":["AAGAAT",0],"AAGACA":["AAAGAC",0],"AAGACC":["AAGACC",0],"AAGACG":["AAGACG",0],"AAGACT":["AAGACT",0],"AAGAGA":["AAAGAG",0],"AAGAGC":["AAGAGC",0],"AAGAGG":["AAGAGG",0],"AAGAGT":["AAGAGT",0],"AAGATA":["AAAGAT",0],"AAGATC":["AAGATC",0],"AAGATG":["AAGATG",0],"AAGATT":["AAGATT",0],"AAGCAA":["AAAAGC",0],"AAGCAC":["AAGCAC",0],"AAGCAG":["AAGCAG",0],"AAGCAT":["AAGCAT",0],"AAGCCA":["AAAGCC",0],"AAGCCC":["AAGCCC",0],"AAGCCG":["AAGCCG",0],"AAGCCT":["AAGCCT",0],"AAGCGA":["AAAGCG",0],"AAGCGC":["AAGCGC",0],"AAGCGG":["AAGCGG",0],"AAGCGT":["AAGCGT",0],"AAGCTA":["AAAGCT",0],"AAGCTC":["AAGCTC",0],"AAGCTG":["AAGCTG",0],"AAGCTT":["AAGCTT",0],"AAGGAA":["AAAAGG",0],"AAGGAC":["AAGGAC",0],"AAGGAG":["AAGGAG",0],"AAGGAT":["AAGGAT",0],"AAGGCA":["AAAGGC",0],"AAGGCC":["AAGGCC",0],"AAGGCG":["AAGGCG",0],"AAGGCT":["AAGGCT",0],"AAGGGA":["AAAGGG",0],"AAGGGC":["AAGGGC",0],"AAGGGG":["AAGGGG",0],"AAGGGT":["AAGGGT",0],"AAGGTA":["AAAGGT",0],"AAGGTC":["AAGGTC",0],"AAGGTG":["AAGGTG",0],"AAGGTT":["AACCTT",1],"AAGTAA":["AAAAGT",0],"AAGTAC":["AAGTAC",0],"AAGTAG":["AAGTAG",0],"AAGTAT":["AAGTAT",0],"AAGTCA":["AAAGTC",0],"AAGTCC":["AAGTCC",0],"AAGTCG":["AAGTCG",0],"AAGTCT":["AAGTCT",0],"AAGTGA":["AAAGTG",0],"AAGTGC":["AAGTGC",0],"AAGTGG":["AAGTGG",0],"AAGTGT":["AAGTGT",0],"AAGTTA":["AAAGTT",0],"AAGTTC":["AACTTG",1],"AAGTTG":["AACTTC",1],"AAGTTT":["AAACTT",1],"AATAAA":["AAAAAT",0],"AATAAC":["AACAAT",0],"AATAAG":["AAGAAT",0],"AATACA":["AAATAC",0],"AATACC":["AATACC",0],"AATACG":["AATACG",0],"AATACT":["AATACT",0],"AATAGA":["AAATAG",0],"AATAGC":["AATAGC",0],"AATAGG":["AATAGG",0],"AATAGT":["AATAGT",0],"AATATA":["AAATAT",0],"AATATC":["AATATC",0],"AATATG":["AATATG",0],"AATATT":["AATATT",0],"AATCAA":["AAAATC",0],"AATCAC":["AATCAC",0],"AATCAG":["AATCAG",0],"AATCAT":["AATCAT",0],"AATCCA":["AAATCC",0],"AATCCC":["AATCCC",0],"AATCCG":["AATCCG",0],"AATCCT":["AATCCT",0],"AATCGA":["AAATCG",0],"AATCGC":["AATCGC",0],"AATCGG":["AATCGG",0],"AATCGT":["AATCGT",0],"AATCTA":["AAATCT",0],"AATCTC":["AATCTC",0],"AATCTG":["AATCTG",0],"AATCTT":["AAGATT",1],"AATGAA":["AAAATG",0],"AATGAC":["AATGAC",0],"AATGAG":["AATGAG",0],"AATGAT":["AATGAT",0],"AATGCA":["AAATGC",0],"AATGCC":["AATGCC",0],"AATGCG":["AATGCG",0],"AATGCT":["AATGCT",0],"AATGGA":["AAATGG",0],"AATGGC":["AATGGC",0],"AATGGG":["AATGGG",0],"AATGGT":["AATGGT",0],"AATGTA":["AAATGT",0],"AATGTC":["AATGTC",0],"AATGTG":["AATGTG",0],"AATGTT":["AACATT",1],"AATTAA":["AAAATT",0],"AATTAC":["AATTAC",0],"AATTAG":["AATTAG",0],"AATTAT":["AATTAT",0],"AATTCA":["AAATTC",0],"AATTCC":["AATTCC",0],"AATTCG":["AATTCG",0],"AATTCT":["AATTAG",1],"AATTGA":["AAATTG",0],"AATTGC":["AATTGC",0],"AATTGG":["AATTCC",1],"AATTGT":["AATTAC",1],"AATTTA":["AAATTT",0],"AATTTC":["AAATTG",1],"AATTTG":["AAATTC",1],"AATTTT":["AAAATT",1],"ACAAAA":["AAAAAC",0],"ACAAAC":["AAACAC",0],"ACAAAG":["AAAGAC",0],"ACAAAT":["AAATAC",0],"ACAACC":["AACCAC",0],"ACAACG":["AACGAC",0],"ACAACT":["AACTAC",0],"ACAAGA":["AACAAG",0],"ACAAGC":["AAGCAC",0],"ACAAGG":["AAGGAC",0],"ACAAGT":["AAGTAC",0],"ACAATA":["AACAAT",0],"ACAATC":["AATCAC",0],"ACAATG":["AATGAC",0],"ACAATT":["AATTAC",0],"ACACAA":["AAACAC",0],"ACACAG":["ACACAG",0],"ACACAT":["ACACAT",0],"ACACCA":["AACACC",0],"ACACCC":["ACACCC",0],"ACACCG":["ACACCG",0],"ACACCT":["ACACCT",0],"ACACGA":["AACACG",0],"ACACGC":["ACACGC",0],"ACACGG":["ACACGG",0],"ACACGT":["ACACGT",0],"ACACTA":["AACACT",0],"ACACTC":["ACACTC",0],"ACACTG":["ACACTG",0],"ACACTT":["AAGTGT",1],"ACAGAA":["AAACAG",0],"ACAGAC":["ACACAG",0],"ACAGAG":["ACAGAG",0],"ACAGAT":["ACAGAT",0],"ACAGCA":["AACAGC",0],"ACAGCC":["ACAGCC",0],"ACAGCG":["ACAGCG",0],"ACAGCT":["ACAGCT",0],"ACAGGA":["AACAGG",0],"ACAGGC":["ACAGGC",0],"ACAGGG":["ACAGGG",0],"ACAGGT":["ACAGGT",0],"ACAGTA":["AACAGT",0],"ACAGTC":["ACAGTC",0],"ACAGTG":["ACAGTG",0],"ACAGTT":["AACTGT",1],"ACATAA":["AAACAT",0],"ACATAC":["ACACAT",0],"ACATAG":["ACATAG",0],"ACATAT":["ACATAT",0],"ACATCA":["AACATC",0],"ACATCC":["ACATCC",0],"ACATCG":["ACATCG",0],"ACATCT":["ACATCT",0],"ACATGA":["AACATG",0],"ACATGC":["ACATGC",0],"ACATGG":["ACATGG",0],"ACATGT":["ACATGT",0],"ACATTA":["AACATT",0],"ACATTC":["AATGTG",1],"ACATTG":["AATGTC",1],"ACATTT":["AAATGT",1],"ACCAAA":["AAAACC",0],"ACCAAC":["AACACC",0],"ACCAAG":["AAGACC",0],"ACCAAT":["AATACC",0],"ACCACA":["AACCAC",0],"ACCACG":["ACCACG",0],"ACCACT":["ACCACT",0],"ACCAGA":["AACCAG",0],"ACCAGC":["ACCAGC",0],"ACCAGG":["ACCAGG",0],"ACCAGT":["ACCAGT",0],"ACCATA":["AACCAT",0],"ACCATC":["ACCATC",0],"ACCATG":["ACCATG",0],"ACCATT":["AATGGT",1],"ACCCAA":["AAACCC",0],"ACCCAC":["ACACCC",0],"ACCCAG":["ACCCAG",0],"ACCCAT":["ACCCAT",0],"ACCCCA":["AACCCC",0],"ACCCCC":["ACCCCC",0],"ACCCCG":["ACCCCG",0],"ACCCCT":["ACCCCT",0],"ACCCGA":["AACCCG",0],"ACCCGC":["ACCCGC",0],"ACCCGG":["ACCCGG",0],"ACCCGT":["ACCCGT",0],"ACCCTA":["AACCCT",0],"ACCCTC":["ACCCTC",0],"ACCCTG":["ACCCTG",0],"ACCCTT":["AAGGGT",1],"ACCGAA":["AAACCG",0],"ACCGAC":["ACACCG",0],"ACCGAG":["ACCGAG",0],"ACCGAT":["ACCGAT",0],"ACCGCA":["AACCGC",0],"ACCGCC":["ACCGCC",0],"ACCGCG":["ACCGCG",0],"ACCGCT":["ACCGCT",0],"ACCGGA":["AACCGG",0],"ACCGGC":["ACCGGC",0],"ACCGGG":["ACCGGG",0],"ACCGGT":["ACCGGT",0],"ACCGTA":["AACCGT",0],"ACCGTC":["ACCGTC",0],"ACCGTG":["ACCGTG",0],"ACCGTT":["AACGGT",1],"ACCTAA":["AAACCT",0],"ACCTAC":["ACACCT",0],"ACCTAG":["ACCTAG",0],"ACCTAT":["ACCTAT",0],"ACCTCA":["AACCTC",0],"ACCTCC":["ACCTCC",0],"ACCTCG":["ACCTCG",0],"ACCTCT":["ACCTCT",0],"ACCTGA":["AACCTG",0],"ACCTGC":["ACCTGC",0],"ACCTGG":["ACCTGG",0],"ACCTGT":["ACAGGT",1],"ACCTTA":["AACCTT",0],"ACCTTC":["AAGGTG",1],"ACCTTG":["AAGGTC",1],"ACCTTT":["AAAGGT",1],"ACGAAA":["AAAACG",0],"ACGAAC":["AACACG",0],"ACGAAG":["AAGACG",0],"ACGAAT":["AATACG",0],"ACGACA":["AACGAC",0],"ACGACC":["ACCACG",0],"ACGACT":["ACGACT",0],"ACGAGA":["AACGAG",0],"ACGAGC":["ACGAGC",0],"ACGAGG":["ACGAGG",0],"ACGAGT":["ACGAGT",0],"ACGATA":["AACGAT",0],"ACGATC":["ACGATC",0],"ACGATG":["ACGATG",0],"ACGATT":["AATCGT",1],"ACGCAA":["AAACGC",0],"ACGCAC":["ACACGC",0],"ACGCAG":["ACGCAG",0],"ACGCAT":["ACGCAT",0],"ACGCCA":["AACGCC",0],"ACGCCC":["ACGCCC",0],"ACGCCG":["ACGCCG",0],"ACGCCT":["ACGCCT",0],"ACGCGA":["AACGCG",0],"ACGCGC":["ACGCGC",0],"ACGCGG":["ACGCGG",0],"ACGCGT":["ACGCGT",0],"ACGCTA":["AACGCT",0],"ACGCTC":["ACGCTC",0],"ACGCTG":["ACGCTG",0],"ACGCTT":["AAGCGT",1],"ACGGAA":["AAACGG",0],"ACGGAC":["ACACGG",0],"ACGGAG":["ACGGAG",0],"ACGGAT":["ACGGAT",0],"ACGGCA":["AACGGC",0],"ACGGCC":["ACGGCC",0],"ACGGCG":["ACGGCG",0],"ACGGCT":["ACGGCT",0],"ACGGGA":["AACGGG",0],"ACGGGC":["ACGGGC",0],"ACGGGG":["ACGGGG",0],"ACGGGT":["ACCCGT",1],"ACGGTA":["AACGGT",0],"ACGGTC":["ACCGTG",1],"ACGGTG":["ACCGTC",1],"ACGGTT":["AACCGT",1],"ACGTAA":["AAACGT",0],"ACGTAC":["ACACGT",0],"ACGTAG":["ACGTAG",0],"ACGTAT":["ACGTAT",0],"ACGTCA":["AACGTC",0],"ACGTCC":["ACGTCC",0],"ACGTCG":["ACGTCG",0],"ACGTCT":["ACGTAG",1],"ACGTGA":["AACGTG",0],"ACGTGC":["ACGTGC",0],"ACGTGG":["ACGTCC",1],"ACGTGT":["ACACGT",1],"ACGTTA":["AACGTT",0],"ACGTTC":["AACGTG",1],"ACGTTG":["AACGTC",1],"ACGTTT":["AAACGT",1],"ACTAAA":["AAAACT",0],"ACTAAC":["AACACT",0],"ACTAAG":["AAGACT",0],"ACTAAT":["AATACT",0],"ACTACA":["AACTAC",0],"ACTACC":["ACCACT",0],"ACTACG":["ACGACT",0],"ACTAGA":["AACTAG",0],"ACTAGC":["ACTAGC",0],"ACTAGG":["ACTAGG",0],"ACTAGT":["ACTAGT",0],"ACTATA":["AACTAT",0],"ACTATC":["ACTATC",0],"ACTATG":["ACTATG",0],"ACTATT":["AATAGT",1],"ACTCAA":["AAACTC",0],"ACTCAC":["ACACTC",0],"ACTCAG":["ACTCAG",0],"ACTCAT":["ACTCAT",0],"ACTCCA":["AACTCC",0],"ACTCCC":["ACTCCC",0],"ACTCCG":["ACTCCG",0],"ACTCCT":["ACTCCT",0],"ACTCGA":["AACTCG",0],"ACTCGC":["ACTCGC",0],"ACTCGG":["ACTCGG",0],"ACTCGT":["ACGAGT",1],"ACTCTA":["AACTCT",0],"ACTCTC":["ACTCTC",0],"ACTCTG":["ACTCTG",0],"ACTCTT":["AAGAGT",1],"ACTGAA":["AAACTG",0],"ACTGAC":["ACACTG",0],"ACTGAG":["ACTGAG",0],"ACTGAT":["ACTGAT",0],"ACTGCA":["AACTGC",0],"ACTGCC":["ACTGCC",0],"ACTGCG":["ACTGCG",0],"ACTGCT":["ACTGCT",0],"ACTGGA":["AACTGG",0],"ACTGGC":["ACTGGC",0],"ACTGGG":["ACTGGG",0],"ACTGGT":["ACCAGT",1],"ACTGTA":["AACTGT",0],"ACTGTC":["ACAGTG",1],"ACTGTG":["ACAGTC",1],"ACTGTT":["AACAGT",1],"ACTTAA":["AAACTT",0],"ACTTAC":["AAGTGT",1],"ACTTAG":["AAGTCT",1],"ACTTAT":["AAGTAT",1],"ACTTCA":["AACTTC",0],"ACTTCC":["AAGTGG",1],"ACTTCG":["AAGTCG",1],"ACTTCT":["AAGTAG",1],"ACTTGA":["AACTTG",0],"ACTTGC":["AAGTGC",1],"ACTTGG":["AAGTCC",1],"ACTTGT":["AAGTAC",1],"ACTTTA":["AAAGTT",1],"ACTTTC":["AAAGTG",1],"ACTTTG":["AAAGTC",1],"ACTTTT":["AAAAGT",1],"AGAAAA":["AAAAAG",0],"AGAAAC":["AAACAG",0],"AGAAAG":["AAAGAG",0],"AGAAAT":["AAATAG",0],"AGAACA":["AACAAG",0],"AGAACC":["AACCAG",0],"AGAACG":["AACGAG",0],"AGAACT":["AACTAG",0],"AGAAGC":["AAGCAG",0],"AGAAGG":["AAGGAG",0],"AGAAGT":["AAGTAG",0],"AGAATA":["AAGAAT",0],"AGAATC":["AATCAG",0],"AGAATG":["AATGAG",0],"AGAATT":["AATTAG",0],"AGACAA":["AAAGAC",0],"AGACAC":["ACACAG",0],"AGACAG":["ACAGAG",0],"AGACAT":["ACATAG",0],"AGACCA":["AAGACC",0],"AGACCC":["ACCCAG",0],"AGACCG":["ACCGAG",0],"AGACCT":["ACCTAG",0],"AGACGA":["AAGACG",0],"AGACGC":["ACGCAG",0],"AGACGG":["ACGGAG",0],"AGACGT":["ACGTAG",0],"AGACTA":["AAGACT",0],"AGACTC":["ACTCAG",0],"AGACTG":["ACTGAG",0],"AGACTT":["AAGTCT",1],"AGAGAA":["AAAGAG",0],"AGAGAC":["ACAGAG",0],"AGAGAT":["AGAGAT",0],"AGAGCA":["AAGAGC",0],"AGAGCC":["AGAGCC",0],"AGAGCG":["AGAGCG",0],"AGAGCT":["AGAGCT",0],"AGAGGA":["AAGAGG",0],"AGAGGC":["AGAGGC",0],"AGAGGG":["AGAGGG",0],"AGAGGT":["ACCTCT",1],"AGAGTA":["AAGAGT",0],"AGAGTC":["ACTCTG",1],"AGAGTG":["ACTCTC",1],"AGAGTT":["AACTCT",1],"AGATAA":["AAAGAT",0],"AGATAC":["ACAGAT",0],"AGATAG":["AGAGAT",0],"AGATAT":["AGATAT",0],"AGATCA":["AAGATC",0],"AGATCC":["AGATCC",0],"AGATCG":["AGATCG",0],"AGATCT":["AGATCT",0],"AGATGA":["AAGATG",0],"AGATGC":["AGATGC",0],"AGATGG":["AGATGG",0],"AGATGT":["ACATCT",1],"AGATTA":["AAGATT",0],"AGATTC":["AATCTG",1],"AGATTG":["AATCTC",1],"AGATTT":["AAATCT",1],"AGCAAA":["AAAAGC",0],"AGCAAC":["AACAGC",0],"AGCAAG":["AAGAGC",0],"AGCAAT":["AATAGC",0],"AGCACA":["AAGCAC",0],"AGCACC":["ACCAGC",0],"AGCACG":["ACGAGC",0],"AGCACT":["ACTAGC",0],"AGCAGA":["AAGCAG",0],"AGCAGG":["AGCAGG",0],"AGCAGT":["ACTGCT",1],"AGCATA":["AAGCAT",0],"AGCATC":["AGCATC",0],"AGCATG":["AGCATG",0],"AGCATT":["AATGCT",1],"AGCCAA":["AAAGCC",0],"AGCCAC":["ACAGCC",0],"AGCCAG":["AGAGCC",0],"AGCCAT":["AGCCAT",0],"AGCCCA":["AAGCCC",0],"AGCCCC":["AGCCCC",0],"AGCCCG":["AGCCCG",0],"AGCCCT":["AGCCCT",0],"AGCCGA":["AAGCCG",0],"AGCCGC":["AGCCGC",0],"AGCCGG":["AGCCGG",0],"AGCCGT":["ACGGCT",1],"AGCCTA":["AAGCCT",0],"AGCCTC":["AGCCTC",0],"AGCCTG":["AGCCTG",0],"AGCCTT":["AAGGCT",1],"AGCGAA":["AAAGCG",0],"AGCGAC":["ACAGCG",0],"AGCGAG":["AGAGCG",0],"AGCGAT":["AGCGAT",0],"AGCGCA":["AAGCGC",0],"AGCGCC":["AGCGCC",0],"AGCGCG":["AGCGCG",0],"AGCGCT":["AGCGCT",0],"AGCGGA":["AAGCGG",0],"AGCGGC":["AGCGGC",0],"AGCGGG":["AGCGGG",0],"AGCGGT":["ACCGCT",1],"AGCGTA":["AAGCGT",0],"AGCGTC":["ACGCTG",1],"AGCGTG":["ACGCTC",1],"AGCGTT":["AACGCT",1],"AGCTAA":["AAAGCT",0],"AGCTAC":["ACAGCT",0],"AGCTAG":["AGAGCT",0],"AGCTAT":["AGCTAT",0],"AGCTCA":["AAGCTC",0],"AGCTCC":["AGCTCC",0],"AGCTCG":["AGCTCG",0],"AGCTCT":["AGAGCT",1],"AGCTGA":["AAGCTG",0],"AGCTGC":["AGCTGC",0],"AGCTGG":["AGCTCC",1],"AGCTGT":["ACAGCT",1],"AGCTTA":["AAGCTT",0],"AGCTTC":["AAGCTG",1],"AGCTTG":["AAGCTC",1],"AGCTTT":["AAAGCT",1],"AGGAAA":["AAAAGG",0],"AGGAAC":["AACAGG",0],"AGGAAG":["AAGAGG",0],"AGGAAT":["AATAGG",0],"AGGACA":["AAGGAC",0],"AGGACC":["ACCAGG",0],"AGGACG":["ACGAGG",0],"AGGACT":["ACTAGG",0],"AGGAGA":["AAGGAG",0],"AGGAGC":["AGCAGG",0],"AGGAGT":["ACTCCT",1],"AGGATA":["AAGGAT",0],"AGGATC":["AGGATC",0],"AGGATG":["AGGATG",0],"AGGATT":["AATCCT",1],"AGGCAA":["AAAGGC",0],"AGGCAC":["ACAGGC",0],"AGGCAG":["AGAGGC",0],"AGGCAT":["AGGCAT",0],"AGGCCA":["AAGGCC",0],"AGGCCC":["AGGCCC",0],"AGGCCG":["AGGCCG",0],"AGGCCT":["AGGCCT",0],"AGGCGA":["AAGGCG",0],"AGGCGC":["AGGCGC",0],"AGGCGG":["AGGCGG",0],"AGGCGT":["ACGCCT",1],"AGGCTA":["AAGGCT",0],"AGGCTC":["AGCCTG",1],"AGGCTG":["AGCCTC",1],"AGGCTT":["AAGCCT",1],"AGGGAA":["AAAGGG",0],"AGGGAC":["ACAGGG",0],"AGGGAG":["AGAGGG",0],"AGGGAT":["AGGGAT",0],"AGGGCA":["AAGGGC",0],"AGGGCC":["AGGGCC",0],"AGGGCG":["AGGGCG",0],"AGGGCT":["AGCCCT",1],"AGGGGA":["AAGGGG",0],"AGGGGC":["AGGGGC",0],"AGGGGG":["AGGGGG",0],"AGGGGT":["ACCCCT",1],"AGGGTA":["AAGGGT",0],"AGGGTC":["ACCCTG",1],"AGGGTG":["ACCCTC",1],"AGGGTT":["AACCCT",1],"AGGTAA":["AAAGGT",0],"AGGTAC":["ACAGGT",0],"AGGTAG":["ACCTCT",1],"AGGTAT":["ACCTAT",1],"AGGTCA":["AAGGTC",0],"AGGTCC":["ACCTGG",1],"AGGTCG":["ACCTCG",1],"AGGTCT":["ACCTAG",1],"AGGTGA":["AAGGTG",0],"AGGTGC":["ACCTGC",1],"AGGTGG":["ACCTCC",1],"AGGTGT":["ACACCT",1],"AGGTTA":["AACCTT",1],"AGGTTC":["AACCTG",1],"AGGTTG":["AACCTC",1],"AGGTTT":["AAACCT",1],"AGTAAA":["AAAAGT",0],"AGTAAC":["AACAGT",0],"AGTAAG":["AAGAGT",0],"AGTAAT":["AATAGT",0],"AGTACA":["AAGTAC",0],"AGTACC":["ACCAGT",0],"AGTACG":["ACGAGT",0],"AGTACT":["ACTAGT",0],"AGTAGA":["AAGTAG",0],"AGTAGC":["ACTGCT",1],"AGTAGG":["ACTCCT",1],"AGTATA":["AAGTAT",0],"AGTATC":["ACTGAT",1],"AGTATG":["ACTCAT",1],"AGTATT":["AATACT",1],"AGTCAA":["AAAGTC",0],"AGTCAC":["ACAGTC",0],"AGTCAG":["ACTCTG",1],"AGTCAT":["ACTATG",1],"AGTCCA":["AAGTCC",0],"AGTCCC":["ACTGGG",1],"AGTCCG":["ACTCGG",1],"AGTCCT":["ACTAGG",1],"AGTCGA":["AAGTCG",0],"AGTCGC":["ACTGCG",1],"AGTCGG":["ACTCCG",1],"AGTCGT":["ACGACT",1],"AGTCTA":["AAGTCT",0],"AGTCTC":["ACTGAG",1],"AGTCTG":["ACTCAG",1],"AGTCTT":["AAGACT",1],"AGTGAA":["AAAGTG",0],"AGTGAC":["ACAGTG",0],"AGTGAG":["ACTCTC",1],"AGTGAT":["ACTATC",1],"AGTGCA":["AAGTGC",0],"AGTGCC":["ACTGGC",1],"AGTGCG":["ACTCGC",1],"AGTGCT":["ACTAGC",1],"AGTGGA":["AAGTGG",0],"AGTGGC":["ACTGCC",1],"AGTGGG":["ACTCCC",1],"AGTGGT":["ACCACT",1],"AGTGTA":["AAGTGT",0],"AGTGTC":["ACACTG",1],"AGTGTG":["ACACTC",1],"AGTGTT":["AACACT",1],"AGTTAA":["AAAGTT",0],"AGTTAC":["AACTGT",1],"AGTTAG":["AACTCT",1],"AGTTAT":["AACTAT",1],"AGTTCA":["AACTTG",1],"AGTTCC":["AACTGG",1],"AGTTCG":["AACTCG",1],"AGTTCT":["AACTAG",1],"AGTTGA":["AACTTC",1],"AGTTGC":["AACTGC",1],"AGTTGG":["AACTCC",1],"AGTTGT":["AACTAC",1],"AGTTTA":["AAACTT",1],"AGTTTC":["AAACTG",1],"AGTTTG":["AAACTC",1],"AGTTTT":["AAAACT",1],"ATAAAA":["AAAAAT",0],"ATAAAC":["AAACAT",0],"ATAAAG":["AAAGAT",0],"ATAAAT":["AAATAT",0],"ATAACA":["AACAAT",0],"ATAACC":["AACCAT",0],"ATAACG":["AACGAT",0],"ATAACT":["AACTAT",0],"ATAAGA":["AAGAAT",0],"ATAAGC":["AAGCAT",0],"ATAAGG":["AAGGAT",0],"ATAAGT":["AAGTAT",0],"ATAATC":["AATCAT",0],"ATAATG":["AATGAT",0],"ATAATT":["AATTAT",0],"ATACAA":["AAATAC",0],"ATACAC":["ACACAT",0],"ATACAG":["ACAGAT",0],"ATACAT":["ACATAT",0],"ATACCA":["AATACC",0],"ATACCC":["ACCCAT",0],"ATACCG":["ACCGAT",0],"ATACCT":["ACCTAT",0],"ATACGA":["AATACG",0],"ATACGC":["ACGCAT",0],"ATACGG":["ACGGAT",0],"ATACGT":["ACGTAT",0],"ATACTA":["AATACT",0],"ATACTC":["ACTCAT",0],"ATACTG":["ACTGAT",0],"ATACTT":["AAGTAT",1],"ATAGAA":["AAATAG",0],"ATAGAC":["ACATAG",0],"ATAGAG":["AGAGAT",0],"ATAGAT":["AGATAT",0],"ATAGCA":["AATAGC",0],"ATAGCC":["AGCCAT",0],"ATAGCG":["AGCGAT",0],"ATAGCT":["AGCTAT",0],"ATAGGA":["AATAGG",0],"ATAGGC":["AGGCAT",0],"ATAGGG":["AGGGAT",0],"ATAGGT":["ACCTAT",1],"ATAGTA":["AATAGT",0],"ATAGTC":["ACTATG",1],"ATAGTG":["ACTATC",1],"ATAGTT":["AACTAT",1],"ATATAA":["AAATAT",0],"ATATAC":["ACATAT",0],"ATATAG":["AGATAT",0],"ATATCA":["AATATC",0],"ATATCC":["ATATCC",0],"ATATCG":["ATATCG",0],"ATATCT":["AGATAT",1],"ATATGA":["AATATG",0],"ATATGC":["ATATGC",0],"ATATGG":["ATATCC",1],"ATATGT":["ACATAT",1],"ATATTA":["AATATT",0],"ATATTC":["AATATG",1],"ATATTG":["AATATC",1],"ATATTT":["AAATAT",1],"ATCAAA":["AAAATC",0],"ATCAAC":["AACATC",0],"ATCAAG":["AAGATC",0],"ATCAAT":["AATATC",0],"ATCACA":["AATCAC",0],"ATCACC":["ACCATC",0],"ATCACG":["ACGATC",0],"ATCACT":["ACTATC",0],"ATCAGA":["AATCAG",0],"ATCAGC":["AGCATC",0],"ATCAGG":["AGGATC",0],"ATCAGT":["ACTGAT",1],"ATCATA":["AATCAT",0],"ATCATG":["ATCATG",0],"ATCATT":["AATGAT",1],"ATCCAA":["AAATCC",0],"ATCCAC":["ACATCC",0],"ATCCAG":["AGATCC",0],"ATCCAT":["ATATCC",0],"ATCCCA":["AATCCC",0],"ATCCCC":["ATCCCC",0],"ATCCCG":["ATCCCG",0],"ATCCCT":["AGGGAT",1],"ATCCGA":["AATCCG",0],"ATCCGC":["ATCCGC",0],"ATCCGG":["ATCCGG",0],"ATCCGT":["ACGGAT",1],"ATCCTA":["AATCCT",0],"ATCCTC":["AGGATG",1],"ATCCTG":["AGGATC",1],"ATCCTT":["AAGGAT",1],"ATCGAA":["AAATCG",0],"ATCGAC":["ACATCG",0],"ATCGAG":["AGATCG",0],"ATCGAT":["ATATCG",0],"ATCGCA":["AATCGC",0],"ATCGCC":["ATCGCC",0],"ATCGCG":["ATCGCG",0],"ATCGCT":["AGCGAT",1],"ATCGGA":["AATCGG",0],"ATCGGC":["ATCGGC",0],"ATCGGG":["ATCCCG",1],"ATCGGT":["ACCGAT",1],"ATCGTA":["AATCGT",0],"ATCGTC":["ACGATG",1],"ATCGTG":["ACGATC",1],"ATCGTT":["AACGAT",1],"ATCTAA":["AAATCT",0],"ATCTAC":["ACATCT",0],"ATCTAG":["AGATCT",0],"ATCTAT":["AGATAT",1],"ATCTCA":["AATCTC",0],"ATCTCC":["AGATGG",1],"ATCTCG":["AGATCG",1],"ATCTCT":["AGAGAT",1],"ATCTGA":["AATCTG",0],"ATCTGC":["AGATGC",1],"ATCTGG":["AGATCC",1],"ATCTGT":["ACAGAT",1],"ATCTTA":["AAGATT",1],"ATCTTC":["AAGATG",1],"ATCTTG":["AAGATC",1],"ATCTTT":["AAAGAT",1],"ATGAAA":["AAAATG",0],"ATGAAC":["AACATG",0],"ATGAAG":["AAGATG",0],"ATGAAT":["AATATG",0],"ATGACA":["AATGAC",0],"ATGACC":["ACCATG",0],"ATGACG":["ACGATG",0],"ATGACT":["ACTATG",0],"ATGAGA":["AATGAG",0],"ATGAGC":["AGCATG",0],"ATGAGG":["AGGATG",0],"ATGAGT":["ACTCAT",1],"ATGATA":["AATGAT",0],"ATGATC":["ATCATG",0],"ATGATT":["AATCAT",1],"ATGCAA":["AAATGC",0],"ATGCAC":["ACATGC",0],"ATGCAG":["AGATGC",0],"ATGCAT":["ATATGC",0],"ATGCCA":["AATGCC",0],"ATGCCC":["ATGCCC",0],"ATGCCG":["ATCGGC",1],"ATGCCT":["AGGCAT",1],"ATGCGA":["AATGCG",0],"ATGCGC":["ATGCGC",0],"ATGCGG":["ATCCGC",1],"ATGCGT":["ACGCAT",1],"ATGCTA":["AATGCT",0],"ATGCTC":["AGCATG",1],"ATGCTG":["AGCATC",1],"ATGCTT":["AAGCAT",1],"ATGGAA":["AAATGG",0],"ATGGAC":["ACATGG",0],"ATGGAG":["AGATGG",0],"ATGGAT":["ATATCC",1],"ATGGCA":["AATGGC",0],"ATGGCC":["ATGGCC",0],"ATGGCG":["ATCGCC",1],"ATGGCT":["AGCCAT",1],"ATGGGA":["AATGGG",0],"ATGGGC":["ATGCCC",1],"ATGGGG":["ATCCCC",1],"ATGGGT":["ACCCAT",1],"ATGGTA":["AATGGT",0],"ATGGTC":["ACCATG",1],"ATGGTG":["ACCATC",1],"ATGGTT":["AACCAT",1],"ATGTAA":["AAATGT",0],"ATGTAC":["ACATGT",0],"ATGTAG":["ACATCT",1],"ATGTAT":["ACATAT",1],"ATGTCA":["AATGTC",0],"ATGTCC":["ACATGG",1],"ATGTCG":["ACATCG",1],"ATGTCT":["ACATAG",1],"ATGTGA":["AATGTG",0],"ATGTGC":["ACATGC",1],"ATGTGG":["ACATCC",1],"ATGTGT":["ACACAT",1],"ATGTTA":["AACATT",1],"ATGTTC":["AACATG",1],"ATGTTG":["AACATC",1],"ATGTTT":["AAACAT",1],"ATTAAA":["AAAATT",0],"ATTAAC":["AACATT",0],"ATTAAG":["AAGATT",0],"ATTAAT":["AATATT",0],"ATTACA":["AATTAC",0],"ATTACC":["AATGGT",1],"ATTACG":["AATCGT",1],"ATTACT":["AATAGT",1],"ATTAGA":["AATTAG",0],"ATTAGC":["AATGCT",1],"ATTAGG":["AATCCT",1],"ATTAGT":["AATACT",1],"ATTATA":["AATTAT",0],"ATTATC":["AATGAT",1],"ATTATG":["AATCAT",1],"ATTCAA":["AAATTC",0],"ATTCAC":["AATGTG",1],"ATTCAG":["AATCTG",1],"ATTCAT":["AATATG",1],"ATTCCA":["AATTCC",0],"ATTCCC":["AATGGG",1],"ATTCCG":["AATCGG",1],"ATTCCT":["AATAGG",1],"ATTCGA":["AATTCG",0],"ATTCGC":["AATGCG",1],"ATTCGG":["AATCCG",1],"ATTCGT":["AATACG",1],"ATTCTA":["AATTAG",1],"ATTCTC":["AATGAG",1],"ATTCTG":["AATCAG",1],"ATTCTT":["AAGAAT",1],"ATTGAA":["AAATTG",0],"ATTGAC":["AATGTC",1],"ATTGAG":["AATCTC",1],"ATTGAT":["AATATC",1],"ATTGCA":["AATTGC",0],"ATTGCC":["AATGGC",1],"ATTGCG":["AATCGC",1],"ATTGCT":["AATAGC",1],"ATTGGA":["AATTCC",1],"ATTGGC":["AATGCC",1],"ATTGGG":["AATCCC",1],"ATTGGT":["AATACC",1],"ATTGTA":["AATTAC",1],"ATTGTC":["AATGAC",1],"ATTGTG":["AATCAC",1],"ATTGTT":["AACAAT",1],"ATTTAA":["AAATTT",0],"ATTTAC":["AAATGT",1],"ATTTAG":["AAATCT",1],"ATTTAT":["AAATAT",1],"ATTTCA":["AAATTG",1],"ATTTCC":["AAATGG",1],"ATTTCG":["AAATCG",1],"ATTTCT":["AAATAG",1],"ATTTGA":["AAATTC",1],"ATTTGC":["AAATGC",1],"ATTTGG":["AAATCC",1],"ATTTGT":["AAATAC",1],"ATTTTA":["AAAATT",1],"ATTTTC":["AAAATG",1],"ATTTTG":["AAAATC",1],"ATTTTT":["AAAAAT",1],"CAAAAA":["AAAAAC",0],"CAAAAC":["AAAACC",0],"CAAAAG":["AAAAGC",0],"CAAAAT":["AAAATC",0],"CAAACA":["AAACAC",0],"CAAACC":["AAACCC",0],"CAAACG":["AAACGC",0],"CAAACT":["AAACTC",0],"CAAAGA":["AAAGAC",0],"CAAAGC":["AAAGCC",0],"CAAAGG":["AAAGGC",0],"CAAAGT":["AAAGTC",0],"CAAATA":["AAATAC",0],"CAAATC":["AAATCC",0],"CAAATG":["AAATGC",0],"CAAATT":["AAATTC",0],"CAACAC":["AACACC",0],"CAACAG":["AACAGC",0],"CAACAT":["AACATC",0],"CAACCA":["AACCAC",0],"CAACCC":["AACCCC",0],"CAACCG":["AACCGC",0],"CAACCT":["AACCTC",0],"CAACGA":["AACGAC",0],"CAACGC":["AACGCC",0],"CAACGG":["AACGGC",0],"CAACGT":["AACGTC",0],"CAACTA":["AACTAC",0],"CAACTC":["AACTCC",0],"CAACTG":["AACTGC",0],"CAACTT":["AACTTC",0],"CAAGAA":["AACAAG",0],"CAAGAC":["AAGACC",0],"CAAGAG":["AAGAGC",0],"CAAGAT":["AAGATC",0],"CAAGCA":["AAGCAC",0],"CAAGCC":["AAGCCC",0],"CAAGCG":["AAGCGC",0],"CAAGCT":["AAGCTC",0],"CAAGGA":["AAGGAC",0],"CAAGGC":["AAGGCC",0],"CAAGGG":["AAGGGC",0],"CAAGGT":["AAGGTC",0],"CAAGTA":["AAGTAC",0],"CAAGTC":["AAGTCC",0],"CAAGTG":["AAGTGC",0],"CAAGTT":["AACTTG",1],"CAATAA":["AACAAT",0],"CAATAC":["AATACC",0],"CAATAG":["AATAGC",0],"CAATAT":["AATATC",0],"CAATCA":["AATCAC",0],"CAATCC":["AATCCC",0],"CAATCG":["AATCGC",0],"CAATCT":["AATCTC",0],"CAATGA":["AATGAC",0],"CAATGC":["AATGCC",0],"CAATGG":["AATGGC",0],"CAATGT":["AATGTC",0],"CAATTA":["AATTAC",0],"CAATTC":["AATTCC",0],"CAATTG":["AATTGC",0],"CAATTT":["AAATTG",1],"CACAAA":["AAACAC",0],"CACAAC":["AACCAC",0],"CACAAG":["AAGCAC",0],"CACAAT":["AATCAC",0],"CACACC":["ACACCC",0],"CACACG":["ACACGC",0],"CACACT":["ACACTC",0],"CACAGA":["ACACAG",0],"CACAGC":["ACAGCC",0],"CACAGG":["ACAGGC",0],"CACAGT":["ACAGTC",0],"CACATA":["ACACAT",0],"CACATC":["ACATCC",0],"CACATG":["ACATGC",0],"CACATT":["AATGTG",1],"CACCAA":["AACACC",0],"CACCAG":["ACCAGC",0],"CACCAT":["ACCATC",0],"CACCCA":["ACACCC",0],"CACCCC":["ACCCCC",0],"CACCCG":["ACCCGC",0],"CACCCT":["ACCCTC",0],"CACCGA":["ACACCG",0],"CACCGC":["ACCGCC",0],"CACCGG":["ACCGGC",0],"CACCGT":["ACCGTC",0],"CACCTA":["ACACCT",0],"CACCTC":["ACCTCC",0],"CACCTG":["ACCTGC",0],"CACCTT":["AAGGTG",1],"CACGAA":["AACACG",0],"CACGAC":["ACCACG",0],"CACGAG":["ACGAGC",0],"CACGAT":["ACGATC",0],"CACGCA":["ACACGC",0],"CACGCC":["ACGCCC",0],"CACGCG":["ACGCGC",0],"CACGCT":["ACGCTC",0],"CACGGA":["ACACGG",0],"CACGGC":["ACGGCC",0],"CACGGG":["ACGGGC",0],"CACGGT":["ACCGTG",1],"CACGTA":["ACACGT",0],"CACGTC":["ACGTCC",0],"CACGTG":["ACGTGC",0],"CACGTT":["AACGTG",1],"CACTAA":["AACACT",0],"CACTAC":["ACCACT",0],"CACTAG":["ACTAGC",0],"CACTAT":["ACTATC",0],"CACTCA":["ACACTC",0],"CACTCC":["ACTCCC",0],"CACTCG":["ACTCGC",0],"CACTCT":["ACTCTC",0],"CACTGA":["ACACTG",0],"CACTGC":["ACTGCC",0],"CACTGG":["ACTGGC",0],"CACTGT":["ACAGTG",1],"CACTTA":["AAGTGT",1],"CACTTC":["AAGTGG",1],"CACTTG":["AAGTGC",1],"CACTTT":["AAAGTG",1],"CAGAAA":["AAACAG",0],"CAGAAC":["AACCAG",0],"CAGAAG":["AAGCAG",0],"CAGAAT":["AATCAG",0],"CAGACA":["ACACAG",0],"CAGACC":["ACCCAG",0],"CAGACG":["ACGCAG",0],"CAGACT":["ACTCAG",0],"CAGAGA":["ACAGAG",0],"CAGAGC":["AGAGCC",0],"CAGAGG":["AGAGGC",0],"CAGAGT":["ACTCTG",1],"CAGATA":["ACAGAT",0],"CAGATC":["AGATCC",0],"CAGATG":["AGATGC",0],"CAGATT":["AATCTG",1],"CAGCAA":["AACAGC",0],"CAGCAC":["ACCAGC",0],"CAGCAT":["AGCATC",0],"CAGCCA":["ACAGCC",0],"CAGCCC":["AGCCCC",0],"CAGCCG":["AGCCGC",0],"CAGCCT":["AGCCTC",0],"CAGCGA":["ACAGCG",0],"CAGCGC":["AGCGCC",0],"CAGCGG":["AGCGGC",0],"CAGCGT":["ACGCTG",1],"CAGCTA":["ACAGCT",0],"CAGCTC":["AGCTCC",0],"CAGCTG":["AGCTGC",0],"CAGCTT":["AAGCTG",1],"CAGGAA":["AACAGG",0],"CAGGAC":["ACCAGG",0],"CAGGAG":["AGCAGG",0],"CAGGAT":["AGGATC",0],"CAGGCA":["ACAGGC",0],"CAGGCC":["AGGCCC",0],"CAGGCG":["AGGCGC",0],"CAGGCT":["AGCCTG",1],"CAGGGA":["ACAGGG",0],"CAGGGC":["AGGGCC",0],"CAGGGG":["AGGGGC",0],"CAGGGT":["ACCCTG",1],"CAGGTA":["ACAGGT",0],"CAGGTC":["ACCTGG",1],"CAGGTG":["ACCTGC",1],"CAGGTT":["AACCTG",1],"CAGTAA":["AACAGT",0],"CAGTAC":["ACCAGT",0],"CAGTAG":["ACTGCT",1],"CAGTAT":["ACTGAT",1],"CAGTCA":["ACAGTC",0],"CAGTCC":["ACTGGG",1],"CAGTCG":["ACTGCG",1],"CAGTCT":["ACTGAG",1],"CAGTGA":["ACAGTG",0],"CAGTGC":["ACTGGC",1],"CAGTGG":["ACTGCC",1],"CAGTGT":["ACACTG",1],"CAGTTA":["AACTGT",1],"CAGTTC":["AACTGG",1],"CAGTTG":["AACTGC",1],"CAGTTT":["AAACTG",1],"CATAAA":["AAACAT",0],"CATAAC":["AACCAT",0],"CATAAG":["AAGCAT",0],"CATAAT":["AATCAT",0],"CATACA":["ACACAT",0],"CATACC":["ACCCAT",0],"CATACG":["ACGCAT",0],"CATACT":["ACTCAT",0],"CATAGA":["ACATAG",0],"CATAGC":["AGCCAT",0],"CATAGG":["AGGCAT",0],"CATAGT":["ACTATG",1],"CATATA":["ACATAT",0],"CATATC":["ATATCC",0],"CATATG":["ATATGC",0],"CATATT":["AATATG",1],"CATCAA":["AACATC",0],"CATCAC":["ACCATC",0],"CATCAG":["AGCATC",0],"CATCCA":["ACATCC",0],"CATCCC":["ATCCCC",0],"CATCCG":["ATCCGC",0],"CATCCT":["AGGATG",1],"CATCGA":["ACATCG",0],"CATCGC":["ATCGCC",0],"CATCGG":["ATCGGC",0],"CATCGT":["ACGATG",1],"CATCTA":["ACATCT",0],"CATCTC":["AGATGG",1],"CATCTG":["AGATGC",1],"CATCTT":["AAGATG",1],"CATGAA":["AACATG",0],"CATGAC":["ACCATG",0],"CATGAG":["AGCATG",0],"CATGAT":["ATCATG",0],"CATGCA":["ACATGC",0],"CATGCC":["ATGCCC",0],"CATGCG":["ATGCGC",0],"CATGCT":["AGCATG",1],"CATGGA":["ACATGG",0],"CATGGC":["ATGGCC",0],"CATGGG":["ATGCCC",1],"CATGGT":["ACCATG",1],"CATGTA":["ACATGT",0],"CATGTC":["ACATGG",1],"CATGTG":["ACATGC",1],"CATGTT":["AACATG",1],"CATTAA":["AACATT",0],"CATTAC":["AATGGT",1],"CATTAG":["AATGCT",1],"CATTAT":["AATGAT",1],"CATTCA":["AATGTG",1],"CATTCC":["AATGGG",1],"CATTCG":["AATGCG",1],"CATTCT":["AATGAG",1],"CATTGA":["AATGTC",1],"CATTGC":["AATGGC",1],"CATTGG":["AATGCC",1],"CATTGT":["AATGAC",1],"CATTTA":["AAATGT",1],"CATTTC":["AAATGG",1],"CATTTG":["AAATGC",1],"CATTTT":["AAAATG",1],"CCAAAA":["AAAACC",0],"CCAAAC":["AAACCC",0],"CCAAAG":["AAAGCC",0],"CCAAAT":["AAATCC",0],"CCAACA":["AACACC",0],"CCAACC":["AACCCC",0],"CCAACG":["AACGCC",0],"CCAACT":["AACTCC",0],"CCAAGA":["AAGACC",0],"CCAAGC":["AAGCCC",0],"CCAAGG":["AAGGCC",0],"CCAAGT":["AAGTCC",0],"CCAATA":["AATACC",0],"CCAATC":["AATCCC",0],"CCAATG":["AATGCC",0],"CCAATT":["AATTCC",0],"CCACAA":["AACCAC",0],"CCACAC":["ACACCC",0],"CCACAG":["ACAGCC",0],"CCACAT":["ACATCC",0],"CCACCC":["ACCCCC",0],"CCACCG":["ACCGCC",0],"CCACCT":["ACCTCC",0],"CCACGA":["ACCACG",0],"CCACGC":["ACGCCC",0],"CCACGG":["ACGGCC",0],"CCACGT":["ACGTCC",0],"CCACTA":["ACCACT",0],"CCACTC":["ACTCCC",0],"CCACTG":["ACTGCC",0],"CCACTT":["AAGTGG",1],"CCAGAA":["AACCAG",0],"CCAGAC":["ACCCAG",0],"CCAGAG":["AGAGCC",0],"CCAGAT":["AGATCC",0],"CCAGCA":["ACCAGC",0],"CCAGCC":["AGCCCC",0],"CCAGCG":["AGCGCC",0],"CCAGCT":["AGCTCC",0],"CCAGGA":["ACCAGG",0],"CCAGGC":["AGGCCC",0],"CCAGGG":["AGGGCC",0],"CCAGGT":["ACCTGG",1],"CCAGTA":["ACCAGT",0],"CCAGTC":["ACTGGG",1],"CCAGTG":["ACTGGC",1],"CCAGTT":["AACTGG",1],"CCATAA":["AACCAT",0],"CCATAC":["ACCCAT",0],"CCATAG":["AGCCAT",0],"CCATAT":["ATATCC",0],"CCATCA":["ACCATC",0],"CCATCC":["ATCCCC",0],"CCATCG":["ATCGCC",0],"CCATCT":["AGATGG",1],"CCATGA":["ACCATG",0],"CCATGC":["ATGCCC",0],"CCATGG":["ATGGCC",0],"CCATGT":["ACATGG",1],"CCATTA":["AATGGT",1],"CCATTC":["AATGGG",1],"CCATTG":["AATGGC",1],"CCATTT":["AAATGG",1],"CCCAAA":["AAACCC",0],"CCCAAC":["AACCCC",0],"CCCAAG":["AAGCCC",0],"CCCAAT":["AATCCC",0],"CCCACA":["ACACCC",0],"CCCACC":["ACCCCC",0],"CCCACG":["ACGCCC",0],"CCCACT":["ACTCCC",0],"CCCAGA":["ACCCAG",0],"CCCAGC":["AGCCCC",0],"CCCAGG":["AGGCCC",0],"CCCAGT":["ACTGGG",1],"CCCATA":["ACCCAT",0],"CCCATC":["ATCCCC",0],"CCCATG":["ATGCCC",0],"CCCATT":["AATGGG",1],"CCCCAA":["AACCCC",0],"CCCCAC":["ACCCCC",0],"CCCCAG":["AGCCCC",0],"CCCCAT":["ATCCCC",0],"CCCCCA":["ACCCCC",0],"CCCCCG":["CCCCCG",0],"CCCCCT":["AGGGGG",1],"CCCCGA":["ACCCCG",0],"CCCCGC":["CCCCCG",0],"CCCCGG":["CCCCGG",0],"CCCCGT":["ACGGGG",1],"CCCCTA":["ACCCCT",0],"CCCCTC":["AGGGGG",1],"CCCCTG":["AGGGGC",1],"CCCCTT":["AAGGGG",1],"CCCGAA":["AACCCG",0],"CCCGAC":["ACCCCG",0],"CCCGAG":["AGCCCG",0],"CCCGAT":["ATCCCG",0],"CCCGCA":["ACCCGC",0],"CCCGCC":["CCCCCG",0],"CCCGCG":["CCCGCG",0],"CCCGCT":["AGCGGG",1],"CCCGGA":["ACCCGG",0],"CCCGGC":["CCCCGG",0],"CCCGGG":["CCCGGG",0],"CCCGGT":["ACCGGG",1],"CCCGTA":["ACCCGT",0],"CCCGTC":["ACGGGG",1],"CCCGTG":["ACGGGC",1],"CCCGTT":["AACGGG",1],"CCCTAA":["AACCCT",0],"CCCTAC":["ACCCCT",0],"CCCTAG":["AGCCCT",0],"CCCTAT":["AGGGAT",1],"CCCTCA":["ACCCTC",0],"CCCTCC":["AGGGGG",1],"CCCTCG":["AGGGCG",1],"CCCTCT":["AGAGGG",1],"CCCTGA":["ACCCTG",0],"CCCTGC":["AGGGGC",1],"CCCTGG":["AGGGCC",1],"CCCTGT":["ACAGGG",1],"CCCTTA":["AAGGGT",1],"CCCTTC":["AAGGGG",1],"CCCTTG":["AAGGGC",1],"CCCTTT":["AAAGGG",1],"CCGAAA":["AAACCG",0],"CCGAAC":["AACCCG",0],"CCGAAG":["AAGCCG",0],"CCGAAT":["AATCCG",0],"CCGACA":["ACACCG",0],"CCGACC":["ACCCCG",0],"CCGACG":["ACGCCG",0],"CCGACT":["ACTCCG",0],"CCGAGA":["ACCGAG",0],"CCGAGC":["AGCCCG",0],"CCGAGG":["AGGCCG",0],"CCGAGT":["ACTCGG",1],"CCGATA":["ACCGAT",0],"CCGATC":["ATCCCG",0],"CCGATG":["ATCGGC",1],"CCGATT":["AATCGG",1],"CCGCAA":["AACCGC",0],"CCGCAC":["ACCCGC",0],"CCGCAG":["AGCCGC",0],"CCGCAT":["ATCCGC",0],"CCGCCA":["ACCGCC",0],"CCGCCC":["CCCCCG",0],"CCGCCT":["AGGCGG",1],"CCGCGA":["ACCGCG",0],"CCGCGC":["CCCGCG",0],"CCGCGG":["CCGCGG",0],"CCGCGT":["ACGCGG",1],"CCGCTA":["ACCGCT",0],"CCGCTC":["AGCGGG",1],"CCGCTG":["AGCGGC",1],"CCGCTT":["AAGCGG",1],"CCGGAA":["AACCGG",0],"CCGGAC":["ACCCGG",0],"CCGGAG":["AGCCGG",0],"CCGGAT":["ATCCGG",0],"CCGGCA":["ACCGGC",0],"CCGGCC":["CCCCGG",0],"CCGGCG":["CCGGCG",0],"CCGGCT":["AGCCGG",1],"CCGGGA":["ACCGGG",0],"CCGGGC":["CCCGGG",0],"CCGGGG":["CCCCGG",1],"CCGGGT":["ACCCGG",1],"CCGGTA":["ACCGGT",0],"CCGGTC":["ACCGGG",1],"CCGGTG":["ACCGGC",1],"CCGGTT":["AACCGG",1],"CCGTAA":["AACCGT",0],"CCGTAC":["ACCCGT",0],"CCGTAG":["ACGGCT",1],"CCGTAT":["ACGGAT",1],"CCGTCA":["ACCGTC",0],"CCGTCC":["ACGGGG",1],"CCGTCG":["ACGGCG",1],"CCGTCT":["ACGGAG",1],"CCGTGA":["ACCGTG",0],"CCGTGC":["ACGGGC",1],"CCGTGG":["ACGGCC",1],"CCGTGT":["ACACGG",1],"CCGTTA":["AACGGT",1],"CCGTTC":["AACGGG",1],"CCGTTG":["AACGGC",1],"CCGTTT":["AAACGG",1],"CCTAAA":["AAACCT",0],"CCTAAC":["AACCCT",0],"CCTAAG":["AAGCCT",0],"CCTAAT":["AATCCT",0],"CCTACA":["ACACCT",0],"CCTACC":["ACCCCT",0],"CCTACG":["ACGCCT",0],"CCTACT":["ACTCCT",0],"CCTAGA":["ACCTAG",0],"CCTAGC":["AGCCCT",0],"CCTAGG":["AGGCCT",0],"CCTAGT":["ACTAGG",1],"CCTATA":["ACCTAT",0],"CCTATC":["AGGGAT",1],"CCTATG":["AGGCAT",1],"CCTATT":["AATAGG",1],"CCTCAA":["AACCTC",0],"CCTCAC":["ACCCTC",0],"CCTCAG":["AGCCTC",0],"CCTCAT":["AGGATG",1],"CCTCCA":["ACCTCC",0],"CCTCCC":["AGGGGG",1],"CCTCCG":["AGGCGG",1],"CCTCGA":["ACCTCG",0],"CCTCGC":["AGGGCG",1],"CCTCGG":["AGGCCG",1],"CCTCGT":["ACGAGG",1],"CCTCTA":["ACCTCT",0],"CCTCTC":["AGAGGG",1],"CCTCTG":["AGAGGC",1],"CCTCTT":["AAGAGG",1],"CCTGAA":["AACCTG",0],"CCTGAC":["ACCCTG",0],"CCTGAG":["AGCCTG",0],"CCTGAT":["AGGATC",1],"CCTGCA":["ACCTGC",0],"CCTGCC":["AGGGGC",1],"CCTGCG":["AGGCGC",1],"CCTGCT":["AGCAGG",1],"CCTGGA":["ACCTGG",0],"CCTGGC":["AGGGCC",1],"CCTGGG":["AGGCCC",1],"CCTGGT":["ACCAGG",1],"CCTGTA":["ACAGGT",1],"CCTGTC":["ACAGGG",1],"CCTGTG":["ACAGGC",1],"CCTGTT":["AACAGG",1],"CCTTAA":["AACCTT",0],"CCTTAC":["AAGGGT",1],"CCTTAG":["AAGGCT",1],"CCTTAT":["AAGGAT",1],"CCTTCA":["AAGGTG",1],"CCTTCC":["AAGGGG",1],"CCTTCG":["AAGGCG",1],"CCTTCT":["AAGGAG",1],"CCTTGA":["AAGGTC",1],"CCTTGC":["AAGGGC",1],"CCTTGG":["AAGGCC",1],"CCTTGT":["AAGGAC",1],"CCTTTA":["AAAGGT",1],"CCTTTC":["AAAGGG",1],"CCTTTG":["AAAGGC",1],"CCTTTT":["AAAAGG",1],"CGAAAA":["AAAACG",0],"CGAAAC":["AAACCG",0],"CGAAAG":["AAAGCG",0],"CGAAAT":["AAATCG",0],"CGAACA":["AACACG",0],"CGAACC":["AACCCG",0],"CGAACG":["AACGCG",0],"CGAACT":["AACTCG",0],"CGAAGA":["AAGACG",0],"CGAAGC":["AAGCCG",0],"CGAAGG":["AAGGCG",0],"CGAAGT":["AAGTCG",0],"CGAATA":["AATACG",0],"CGAATC":["AATCCG",0],"CGAATG":["AATGCG",0],"CGAATT":["AATTCG",0],"CGACAA":["AACGAC",0],"CGACAC":["ACACCG",0],"CGACAG":["ACAGCG",0],"CGACAT":["ACATCG",0],"CGACCA":["ACCACG",0],"CGACCC":["ACCCCG",0],"CGACCG":["ACCGCG",0],"CGACCT":["ACCTCG",0],"CGACGC":["ACGCCG",0],"CGACGG":["ACGGCG",0],"CGACGT":["ACGTCG",0],"CGACTA":["ACGACT",0],"CGACTC":["ACTCCG",0],"CGACTG":["ACTGCG",0],"CGACTT":["AAGTCG",1],"CGAGAA":["AACGAG",0],"CGAGAC":["ACCGAG",0],"CGAGAG":["AGAGCG",0],"CGAGAT":["AGATCG",0],"CGAGCA":["ACGAGC",0],"CGAGCC":["AGCCCG",0],"CGAGCG":["AGCGCG",0],"CGAGCT":["AGCTCG",0],"CGAGGA":["ACGAGG",0],"CGAGGC":["AGGCCG",0],"CGAGGG":["AGGGCG",0],"CGAGGT":["ACCTCG",1],"CGAGTA":["ACGAGT",0],"CGAGTC":["ACTCGG",1],"CGAGTG":["ACTCGC",1],"CGAGTT":["AACTCG",1],"CGATAA":["AACGAT",0],"CGATAC":["ACCGAT",0],"CGATAG":["AGCGAT",0],"CGATAT":["ATATCG",0],"CGATCA":["ACGATC",0],"CGATCC":["ATCCCG",0],"CGATCG":["ATCGCG",0],"CGATCT":["AGATCG",1],"CGATGA":["ACGATG",0],"CGATGC":["ATCGGC",1],"CGATGG":["ATCGCC",1],"CGATGT":["ACATCG",1],"CGATTA":["AATCGT",1],"CGATTC":["AATCGG",1],"CGATTG":["AATCGC",1],"CGATTT":["AAATCG",1],"CGCAAA":["AAACGC",0],"CGCAAC":["AACCGC",0],"CGCAAG":["AAGCGC",0],"CGCAAT":["AATCGC",0],"CGCACA":["ACACGC",0],"CGCACC":["ACCCGC",0],"CGCACG":["ACGCGC",0],"CGCACT":["ACTCGC",0],"CGCAGA":["ACGCAG",0],"CGCAGC":["AGCCGC",0],"CGCAGG":["AGGCGC",0],"CGCAGT":["ACTGCG",1],"CGCATA":["ACGCAT",0],"CGCATC":["ATCCGC",0],"CGCATG":["ATGCGC",0],"CGCATT":["AATGCG",1],"CGCCAA":["AACGCC",0],"CGCCAC":["ACCGCC",0],"CGCCAG":["AGCGCC",0],"CGCCAT":["ATCGCC",0],"CGCCCA":["ACGCCC",0],"CGCCCC":["CCCCCG",0],"CGCCCG":["CCCGCG",0],"CGCCCT":["AGGGCG",1],"CGCCGA":["ACGCCG",0],"CGCCGG":["CCGGCG",0],"CGCCGT":["ACGGCG",1],"CGCCTA":["ACGCCT",0],"CGCCTC":["AGGCGG",1],"CGCCTG":["AGGCGC",1],"CGCCTT":["AAGGCG",1],"CGCGAA":["AACGCG",0],"CGCGAC":["ACCGCG",0],"CGCGAG":["AGCGCG",0],"CGCGAT":["ATCGCG",0],"CGCGCA":["ACGCGC",0],"CGCGCC":["CCCGCG",0],"CGCGCT":["AGCGCG",1],"CGCGGA":["ACGCGG",0],"CGCGGC":["CCGCGG",0],"CGCGGG":["CCCGCG",1],"CGCGGT":["ACCGCG",1],"CGCGTA":["ACGCGT",0],"CGCGTC":["ACGCGG",1],"CGCGTG":["ACGCGC",1],"CGCGTT":["AACGCG",1],"CGCTAA":["AACGCT",0],"CGCTAC":["ACCGCT",0],"CGCTAG":["AGCGCT",0],"CGCTAT":["AGCGAT",1],"CGCTCA":["ACGCTC",0],"CGCTCC":["AGCGGG",1],"CGCTCG":["AGCGCG",1],"CGCTCT":["AGAGCG",1],"CGCTGA":["ACGCTG",0],"CGCTGC":["AGCGGC",1],"CGCTGG":["AGCGCC",1],"CGCTGT":["ACAGCG",1],"CGCTTA":["AAGCGT",1],"CGCTTC":["AAGCGG",1],"CGCTTG":["AAGCGC",1],"CGCTTT":["AAAGCG",1],"CGGAAA":["AAACGG",0],"CGGAAC":["AACCGG",0],"CGGAAG":["AAGCGG",0],"CGGAAT":["AATCGG",0],"CGGACA":["ACACGG",0],"CGGACC":["ACCCGG",0],"CGGACG":["ACGCGG",0],"CGGACT":["ACTCGG",0],"CGGAGA":["ACGGAG",0],"CGGAGC":["AGCCGG",0],"CGGAGG":["AGGCGG",0],"CGGAGT":["ACTCCG",1],"CGGATA":["ACGGAT",0],"CGGATC":["ATCCGG",0],"CGGATG":["ATCCGC",1],"CGGATT":["AATCCG",1],"CGGCAA":["AACGGC",0],"CGGCAC":["ACCGGC",0],"CGGCAG":["AGCGGC",0],"CGGCAT":["ATCGGC",0],"CGGCCA":["ACGGCC",0],"CGGCCC":["CCCCGG",0],"CGGCCG":["CCGCGG",0],"CGGCCT":["AGGCCG",1],"CGGCGA":["ACGGCG",0],"CGGCGC":["CCGGCG",0],"CGGCGT":["ACGCCG",1],"CGGCTA":["ACGGCT",0],"CGGCTC":["AGCCGG",1],"CGGCTG":["AGCCGC",1],"CGGCTT":["AAGCCG",1],"CGGGAA":["AACGGG",0],"CGGGAC":["ACCGGG",0],"CGGGAG":["AGCGGG",0],"CGGGAT":["ATCCCG",1],"CGGGCA":["ACGGGC",0],"CGGGCC":["CCCGGG",0],"CGGGCG":["CCCGCG",1],"CGGGCT":["AGCCCG",1],"CGGGGA":["ACGGGG",0],"CGGGGC":["CCCCGG",1],"CGGGGG":["CCCCCG",1],"CGGGGT":["ACCCCG",1],"CGGGTA":["ACCCGT",1],"CGGGTC":["ACCCGG",1],"CGGGTG":["ACCCGC",1],"CGGGTT":["AACCCG",1],"CGGTAA":["AACGGT",0],"CGGTAC":["ACCGGT",0],"CGGTAG":["ACCGCT",1],"CGGTAT":["ACCGAT",1],"CGGTCA":["ACCGTG",1],"CGGTCC":["ACCGGG",1],"CGGTCG":["ACCGCG",1],"CGGTCT":["ACCGAG",1],"CGGTGA":["ACCGTC",1],"CGGTGC":["ACCGGC",1],"CGGTGG":["ACCGCC",1],"CGGTGT":["ACACCG",1],"CGGTTA":["AACCGT",1],"CGGTTC":["AACCGG",1],"CGGTTG":["AACCGC",1],"CGGTTT":["AAACCG",1],"CGTAAA":["AAACGT",0],"CGTAAC":["AACCGT",0],"CGTAAG":["AAGCGT",0],"CGTAAT":["AATCGT",0],"CGTACA":["ACACGT",0],"CGTACC":["ACCCGT",0],"CGTACG":["ACGCGT",0],"CGTACT":["ACGAGT",1],"CGTAGA":["ACGTAG",0],"CGTAGC":["ACGGCT",1],"CGTAGG":["ACGCCT",1],"CGTAGT":["ACGACT",1],"CGTATA":["ACGTAT",0],"CGTATC":["ACGGAT",1],"CGTATG":["ACGCAT",1],"CGTATT":["AATACG",1],"CGTCAA":["AACGTC",0],"CGTCAC":["ACCGTC",0],"CGTCAG":["ACGCTG",1],"CGTCAT":["ACGATG",1],"CGTCCA":["ACGTCC",0],"CGTCCC":["ACGGGG",1],"CGTCCG":["ACGCGG",1],"CGTCCT":["ACGAGG",1],"CGTCGA":["ACGTCG",0],"CGTCGC":["ACGGCG",1],"CGTCGG":["ACGCCG",1],"CGTCTA":["ACGTAG",1],"CGTCTC":["ACGGAG",1],"CGTCTG":["ACGCAG",1],"CGTCTT":["AAGACG",1],"CGTGAA":["AACGTG",0],"CGTGAC":["ACCGTG",0],"CGTGAG":["ACGCTC",1],"CGTGAT":["ACGATC",1],"CGTGCA":["ACGTGC",0],"CGTGCC":["ACGGGC",1],"CGTGCG":["ACGCGC",1],"CGTGCT":["ACGAGC",1],"CGTGGA":["ACGTCC",1],"CGTGGC":["ACGGCC",1],"CGTGGG":["ACGCCC",1],"CGTGGT":["ACCACG",1],"CGTGTA":["ACACGT",1],"CGTGTC":["ACACGG",1],"CGTGTG":["ACACGC",1],"CGTGTT":["AACACG",1],"CGTTAA":["AACGTT",0],"CGTTAC":["AACGGT",1],"CGTTAG":["AACGCT",1],"CGTTAT":["AACGAT",1],"CGTTCA":["AACGTG",1],"CGTTCC":["AACGGG",1],"CGTTCG":["AACGCG",1],"CGTTCT":["AACGAG",1],"CGTTGA":["AACGTC",1],"CGTTGC":["AACGGC",1],"CGTTGG":["AACGCC",1],"CGTTGT":["AACGAC",1],"CGTTTA":["AAACGT",1],"CGTTTC":["AAACGG",1],"CGTTTG":["AAACGC",1],"CGTTTT":["AAAACG",1],"CTAAAA":["AAAACT",0],"CTAAAC":["AAACCT",0],"CTAAAG":["AAAGCT",0],"CTAAAT":["AAATCT",0],"CTAACA":["AACACT",0],"CTAACC":["AACCCT",0],"CTAACG":["AACGCT",0],"CTAACT":["AACTCT",0],"CTAAGA":["AAGACT",0],"CTAAGC":["AAGCCT",0],"CTAAGG":["AAGGCT",0],"CTAAGT":["AAGTCT",0],"CTAATA":["AATACT",0],"CTAATC":["AATCCT",0],"CTAATG":["AATGCT",0],"CTAATT":["AATTAG",1],"CTACAA":["AACTAC",0],"CTACAC":["ACACCT",0],"CTACAG":["ACAGCT",0],"CTACAT":["ACATCT",0],"CTACCA":["ACCACT",0],"CTACCC":["ACCCCT",0],"CTACCG":["ACCGCT",0],"CTACCT":["ACCTCT",0],"CTACGA":["ACGACT",0],"CTACGC":["ACGCCT",0],"CTACGG":["ACGGCT",0],"CTACGT":["ACGTAG",1],"CTACTC":["ACTCCT",0],"CTACTG":["ACTGCT",0],"CTACTT":["AAGTAG",1],"CTAGAA":["AACTAG",0],"CTAGAC":["ACCTAG",0],"CTAGAG":["AGAGCT",0],"CTAGAT":["AGATCT",0],"CTAGCA":["ACTAGC",0],"CTAGCC":["AGCCCT",0],"CTAGCG":["AGCGCT",0],"CTAGCT":["AGAGCT",1],"CTAGGA":["ACTAGG",0],"CTAGGC":["AGGCCT",0],"CTAGGG":["AGCCCT",1],"CTAGGT":["ACCTAG",1],"CTAGTA":["ACTAGT",0],"CTAGTC":["ACTAGG",1],"CTAGTG":["ACTAGC",1],"CTAGTT":["AACTAG",1],"CTATAA":["AACTAT",0],"CTATAC":["ACCTAT",0],"CTATAG":["AGCTAT",0],"CTATAT":["AGATAT",1],"CTATCA":["ACTATC",0],"CTATCC":["AGGGAT",1],"CTATCG":["AGCGAT",1],"CTATCT":["AGAGAT",1],"CTATGA":["ACTATG",0],"CTATGC":["AGGCAT",1],"CTATGG":["AGCCAT",1],"CTATGT":["ACATAG",1],"CTATTA":["AATAGT",1],"CTATTC":["AATAGG",1],"CTATTG":["AATAGC",1],"CTATTT":["AAATAG",1],"CTCAAA":["AAACTC",0],"CTCAAC":["AACCTC",0],"CTCAAG":["AAGCTC",0],"CTCAAT":["AATCTC",0],"CTCACA":["ACACTC",0],"CTCACC":["ACCCTC",0],"CTCACG":["ACGCTC",0],"CTCACT":["ACTCTC",0],"CTCAGA":["ACTCAG",0],"CTCAGC":["AGCCTC",0],"CTCAGG":["AGCCTG",1],"CTCAGT":["ACTGAG",1],"CTCATA":["ACTCAT",0],"CTCATC":["AGGATG",1],"CTCATG":["AGCATG",1],"CTCATT":["AATGAG",1],"CTCCAA":["AACTCC",0],"CTCCAC":["ACCTCC",0],"CTCCAG":["AGCTCC",0],"CTCCAT":["AGATGG",1],"CTCCCA":["ACTCCC",0],"CTCCCC":["AGGGGG",1],"CTCCCG":["AGCGGG",1],"CTCCCT":["AGAGGG",1],"CTCCGA":["ACTCCG",0],"CTCCGC":["AGGCGG",1],"CTCCGG":["AGCCGG",1],"CTCCGT":["ACGGAG",1],"CTCCTA":["ACTCCT",0],"CTCCTG":["AGCAGG",1],"CTCCTT":["AAGGAG",1],"CTCGAA":["AACTCG",0],"CTCGAC":["ACCTCG",0],"CTCGAG":["AGCTCG",0],"CTCGAT":["AGATCG",1],"CTCGCA":["ACTCGC",0],"CTCGCC":["AGGGCG",1],"CTCGCG":["AGCGCG",1],"CTCGCT":["AGAGCG",1],"CTCGGA":["ACTCGG",0],"CTCGGC":["AGGCCG",1],"CTCGGG":["AGCCCG",1],"CTCGGT":["ACCGAG",1],"CTCGTA":["ACGAGT",1],"CTCGTC":["ACGAGG",1],"CTCGTG":["ACGAGC",1],"CTCGTT":["AACGAG",1],"CTCTAA":["AACTCT",0],"CTCTAC":["ACCTCT",0],"CTCTAG":["AGAGCT",1],"CTCTAT":["AGAGAT",1],"CTCTCA":["ACTCTC",0],"CTCTCC":["AGAGGG",1],"CTCTCG":["AGAGCG",1],"CTCTGA":["ACTCTG",0],"CTCTGC":["AGAGGC",1],"CTCTGG":["AGAGCC",1],"CTCTGT":["ACAGAG",1],"CTCTTA":["AAGAGT",1],"CTCTTC":["AAGAGG",1],"CTCTTG":["AAGAGC",1],"CTCTTT":["AAAGAG",1],"CTGAAA":["AAACTG",0],"CTGAAC":["AACCTG",0],"CTGAAG":["AAGCTG",0],"CTGAAT":["AATCTG",0],"CTGACA":["ACACTG",0],"CTGACC":["ACCCTG",0],"CTGACG":["ACGCTG",0],"CTGACT":["ACTCTG",0],"CTGAGA":["ACTGAG",0],"CTGAGC":["AGCCTG",0],"CTGAGG":["AGCCTC",1],"CTGAGT":["ACTCAG",1],"CTGATA":["ACTGAT",0],"CTGATC":["AGGATC",1],"CTGATG":["AGCATC",1],"CTGATT":["AATCAG",1],"CTGCAA":["AACTGC",0],"CTGCAC":["ACCTGC",0],"CTGCAG":["AGCTGC",0],"CTGCAT":["AGATGC",1],"CTGCCA":["ACTGCC",0],"CTGCCC":["AGGGGC",1],"CTGCCG":["AGCGGC",1],"CTGCCT":["AGAGGC",1],"CTGCGA":["ACTGCG",0],"CTGCGC":["AGGCGC",1],"CTGCGG":["AGCCGC",1],"CTGCGT":["ACGCAG",1],"CTGCTA":["ACTGCT",0],"CTGCTC":["AGCAGG",1],"CTGCTT":["AAGCAG",1],"CTGGAA":["AACTGG",0],"CTGGAC":["ACCTGG",0],"CTGGAG":["AGCTCC",1],"CTGGAT":["AGATCC",1],"CTGGCA":["ACTGGC",0],"CTGGCC":["AGGGCC",1],"CTGGCG":["AGCGCC",1],"CTGGCT":["AGAGCC",1],"CTGGGA":["ACTGGG",0],"CTGGGC":["AGGCCC",1],"CTGGGG":["AGCCCC",1],"CTGGGT":["ACCCAG",1],"CTGGTA":["ACCAGT",1],"CTGGTC":["ACCAGG",1],"CTGGTG":["ACCAGC",1],"CTGGTT":["AACCAG",1],"CTGTAA":["AACTGT",0],"CTGTAC":["ACAGGT",1],"CTGTAG":["ACAGCT",1],"CTGTAT":["ACAGAT",1],"CTGTCA":["ACAGTG",1],"CTGTCC":["ACAGGG",1],"CTGTCG":["ACAGCG",1],"CTGTCT":["ACAGAG",1],"CTGTGA":["ACAGTC",1],"CTGTGC":["ACAGGC",1],"CTGTGG":["ACAGCC",1],"CTGTGT":["ACACAG",1],"CTGTTA":["AACAGT",1],"CTGTTC":["AACAGG",1],"CTGTTG":["AACAGC",1],"CTGTTT":["AAACAG",1],"CTTAAA":["AAACTT",0],"CTTAAC":["AACCTT",0],"CTTAAG":["AAGCTT",0],"CTTAAT":["AAGATT",1],"CTTACA":["AAGTGT",1],"CTTACC":["AAGGGT",1],"CTTACG":["AAGCGT",1],"CTTACT":["AAGAGT",1],"CTTAGA":["AAGTCT",1],"CTTAGC":["AAGGCT",1],"CTTAGG":["AAGCCT",1],"CTTAGT":["AAGACT",1],"CTTATA":["AAGTAT",1],"CTTATC":["AAGGAT",1],"CTTATG":["AAGCAT",1],"CTTATT":["AAGAAT",1],"CTTCAA":["AACTTC",0],"CTTCAC":["AAGGTG",1],"CTTCAG":["AAGCTG",1],"CTTCAT":["AAGATG",1],"CTTCCA":["AAGTGG",1],"CTTCCC":["AAGGGG",1],"CTTCCG":["AAGCGG",1],"CTTCCT":["AAGAGG",1],"CTTCGA":["AAGTCG",1],"CTTCGC":["AAGGCG",1],"CTTCGG":["AAGCCG",1],"CTTCGT":["AAGACG",1],"CTTCTA":["AAGTAG",1],"CTTCTC":["AAGGAG",1],"CTTCTG":["AAGCAG",1],"CTTGAA":["AACTTG",0],"CTTGAC":["AAGGTC",1],"CTTGAG":["AAGCTC",1],"CTTGAT":["AAGATC",1],"CTTGCA":["AAGTGC",1],"CTTGCC":["AAGGGC",1],"CTTGCG":["AAGCGC",1],"CTTGCT":["AAGAGC",1],"CTTGGA":["AAGTCC",1],"CTTGGC":["AAGGCC",1],"CTTGGG":["AAGCCC",1],"CTTGGT":["AAGACC",1],"CTTGTA":["AAGTAC",1],"CTTGTC":["AAGGAC",1],"CTTGTG":["AAGCAC",1],"CTTGTT":["AACAAG",1],"CTTTAA":["AAAGTT",1],"CTTTAC":["AAAGGT",1],"CTTTAG":["AAAGCT",1],"CTTTAT":["AAAGAT",1],"CTTTCA":["AAAGTG",1],"CTTTCC":["AAAGGG",1],"CTTTCG":["AAAGCG",1],"CTTTCT":["AAAGAG",1],"CTTTGA":["AAAGTC",1],"CTTTGC":["AAAGGC",1],"CTTTGG":["AAAGCC",1],"CTTTGT":["AAAGAC",1],"CTTTTA":["AAAAGT",1],"CTTTTC":["AAAAGG",1],"CTTTTG":["AAAAGC",1],"CTTTTT":["AAAAAG",1],"GAAAAA":["AAAAAG",0],"GAAAAC":["AAAACG",0],"GAAAAG":["AAAAGG",0],"GAAAAT":["AAAATG",0],"GAAACA":["AAACAG",0],"GAAACC":["AAACCG",0],"GAAACG":["AAACGG",0],"GAAACT":["AAACTG",0],"GAAAGA":["AAAGAG",0],"GAAAGC":["AAAGCG",0],"GAAAGG":["AAAGGG",0],"GAAAGT":["AAAGTG",0],"GAAATA":["AAATAG",0],"GAAATC":["AAATCG",0],"GAAATG":["AAATGG",0],"GAAATT":["AAATTG",0],"GAACAA":["AACAAG",0],"GAACAC":["AACACG",0],"GAACAG":["AACAGG",0],"GAACAT":["AACATG",0],"GAACCA":["AACCAG",0],"GAACCC":["AACCCG",0],"GAACCG":["AACCGG",0],"GAACCT":["AACCTG",0],"GAACGA":["AACGAG",0],"GAACGC":["AACGCG",0],"GAACGG":["AACGGG",0],"GAACGT":["AACGTG",0],"GAACTA":["AACTAG",0],"GAACTC":["AACTCG",0],"GAACTG":["AACTGG",0],"GAACTT":["AACTTG",0],"GAAGAC":["AAGACG",0],"GAAGAG":["AAGAGG",0],"GAAGAT":["AAGATG",0],"GAAGCA":["AAGCAG",0],"GAAGCC":["AAGCCG",0],"GAAGCG":["AAGCGG",0],"GAAGCT":["AAGCTG",0],"GAAGGA":["AAGGAG",0],"GAAGGC":["AAGGCG",0],"GAAGGG":["AAGGGG",0],"GAAGGT":["AAGGTG",0],"GAAGTA":["AAGTAG",0],"GAAGTC":["AAGTCG",0],"GAAGTG":["AAGTGG",0],"GAAGTT":["AACTTC",1],"GAATAA":["AAGAAT",0],"GAATAC":["AATACG",0],"GAATAG":["AATAGG",0],"GAATAT":["AATATG",0],"GAATCA":["AATCAG",0],"GAATCC":["AATCCG",0],"GAATCG":["AATCGG",0],"GAATCT":["AATCTG",0],"GAATGA":["AATGAG",0],"GAATGC":["AATGCG",0],"GAATGG":["AATGGG",0],"GAATGT":["AATGTG",0],"GAATTA":["AATTAG",0],"GAATTC":["AATTCG",0],"GAATTG":["AATTCC",1],"GAATTT":["AAATTC",1],"GACAAA":["AAAGAC",0],"GACAAC":["AACGAC",0],"GACAAG":["AAGGAC",0],"GACAAT":["AATGAC",0],"GACACA":["ACACAG",0],"GACACC":["ACACCG",0],"GACACG":["ACACGG",0],"GACACT":["ACACTG",0],"GACAGA":["ACAGAG",0],"GACAGC":["ACAGCG",0],"GACAGG":["ACAGGG",0],"GACAGT":["ACAGTG",0],"GACATA":["ACATAG",0],"GACATC":["ACATCG",0],"GACATG":["ACATGG",0],"GACATT":["AATGTC",1],"GACCAA":["AAGACC",0],"GACCAC":["ACCACG",0],"GACCAG":["ACCAGG",0],"GACCAT":["ACCATG",0],"GACCCA":["ACCCAG",0],"GACCCC":["ACCCCG",0],"GACCCG":["ACCCGG",0],"GACCCT":["ACCCTG",0],"GACCGA":["ACCGAG",0],"GACCGC":["ACCGCG",0],"GACCGG":["ACCGGG",0],"GACCGT":["ACCGTG",0],"GACCTA":["ACCTAG",0],"GACCTC":["ACCTCG",0],"GACCTG":["ACCTGG",0],"GACCTT":["AAGGTC",1],"GACGAA":["AAGACG",0],"GACGAG":["ACGAGG",0],"GACGAT":["ACGATG",0],"GACGCA":["ACGCAG",0],"GACGCC":["ACGCCG",0],"GACGCG":["ACGCGG",0],"GACGCT":["ACGCTG",0],"GACGGA":["ACGGAG",0],"GACGGC":["ACGGCG",0],"GACGGG":["ACGGGG",0],"GACGGT":["ACCGTC",1],"GACGTA":["ACGTAG",0],"GACGTC":["ACGTCG",0],"GACGTG":["ACGTCC",1],"GACGTT":["AACGTC",1],"GACTAA":["AAGACT",0],"GACTAC":["ACGACT",0],"GACTAG":["ACTAGG",0],"GACTAT":["ACTATG",0],"GACTCA":["ACTCAG",0],"GACTCC":["ACTCCG",0],"GACTCG":["ACTCGG",0],"GACTCT":["ACTCTG",0],"GACTGA":["ACTGAG",0],"GACTGC":["ACTGCG",0],"GACTGG":["ACTGGG",0],"GACTGT":["ACAGTC",1],"GACTTA":["AAGTCT",1],"GACTTC":["AAGTCG",1],"GACTTG":["AAGTCC",1],"GACTTT":["AAAGTC",1],"GAGAAA":["AAAGAG",0],"GAGAAC":["AACGAG",0],"GAGAAG":["AAGGAG",0],"GAGAAT":["AATGAG",0],"GAGACA":["ACAGAG",0],"GAGACC":["ACCGAG",0],"GAGACG":["ACGGAG",0],"GAGACT":["ACTGAG",0],"GAGAGC":["AGAGCG",0],"GAGAGG":["AGAGGG",0],"GAGAGT":["ACTCTC",1],"GAGATA":["AGAGAT",0],"GAGATC":["AGATCG",0],"GAGATG":["AGATGG",0],"GAGATT":["AATCTC",1],"GAGCAA":["AAGAGC",0],"GAGCAC":["ACGAGC",0],"GAGCAG":["AGCAGG",0],"GAGCAT":["AGCATG",0],"GAGCCA":["AGAGCC",0],"GAGCCC":["AGCCCG",0],"GAGCCG":["AGCCGG",0],"GAGCCT":["AGCCTG",0],"GAGCGA":["AGAGCG",0],"GAGCGC":["AGCGCG",0],"GAGCGG":["AGCGGG",0],"GAGCGT":["ACGCTC",1],"GAGCTA":["AGAGCT",0],"GAGCTC":["AGCTCG",0],"GAGCTG":["AGCTCC",1],"GAGCTT":["AAGCTC",1],"GAGGAA":["AAGAGG",0],"GAGGAC":["ACGAGG",0],"GAGGAT":["AGGATG",0],"GAGGCA":["AGAGGC",0],"GAGGCC":["AGGCCG",0],"GAGGCG":["AGGCGG",0],"GAGGCT":["AGCCTC",1],"GAGGGA":["AGAGGG",0],"GAGGGC":["AGGGCG",0],"GAGGGG":["AGGGGG",0],"GAGGGT":["ACCCTC",1],"GAGGTA":["ACCTCT",1],"GAGGTC":["ACCTCG",1],"GAGGTG":["ACCTCC",1],"GAGGTT":["AACCTC",1],"GAGTAA":["AAGAGT",0],"GAGTAC":["ACGAGT",0],"GAGTAG":["ACTCCT",1],"GAGTAT":["ACTCAT",1],"GAGTCA":["ACTCTG",1],"GAGTCC":["ACTCGG",1],"GAGTCG":["ACTCCG",1],"GAGTCT":["ACTCAG",1],"GAGTGA":["ACTCTC",1],"GAGTGC":["ACTCGC",1],"GAGTGG":["ACTCCC",1],"GAGTGT":["ACACTC",1],"GAGTTA":["AACTCT",1],"GAGTTC":["AACTCG",1],"GAGTTG":["AACTCC",1],"GAGTTT":["AAACTC",1],"GATAAA":["AAAGAT",0],"GATAAC":["AACGAT",0],"GATAAG":["AAGGAT",0],"GATAAT":["AATGAT",0],"GATACA":["ACAGAT",0],"GATACC":["ACCGAT",0],"GATACG":["ACGGAT",0],"GATACT":["ACTGAT",0],"GATAGA":["AGAGAT",0],"GATAGC":["AGCGAT",0],"GATAGG":["AGGGAT",0],"GATAGT":["ACTATC",1],"GATATA":["AGATAT",0],"GATATC":["ATATCG",0],"GATATG":["ATATCC",1],"GATATT":["AATATC",1],"GATCAA":["AAGATC",0],"GATCAC":["ACGATC",0],"GATCAG":["AGGATC",0],"GATCAT":["ATCATG",0],"GATCCA":["AGATCC",0],"GATCCC":["ATCCCG",0],"GATCCG":["ATCCGG",0],"GATCCT":["AGGATC",1],"GATCGA":["AGATCG",0],"GATCGC":["ATCGCG",0],"GATCGG":["ATCCCG",1],"GATCGT":["ACGATC",1],"GATCTA":["AGATCT",0],"GATCTC":["AGATCG",1],"GATCTG":["AGATCC",1],"GATCTT":["AAGATC",1],"GATGAA":["AAGATG",0],"GATGAC":["ACGATG",0],"GATGAG":["AGGATG",0],"GATGCA":["AGATGC",0],"GATGCC":["ATCGGC",1],"GATGCG":["ATCCGC",1],"GATGCT":["AGCATC",1],"GATGGA":["AGATGG",0],"GATGGC":["ATCGCC",1],"GATGGG":["ATCCCC",1],"GATGGT":["ACCATC",1],"GATGTA":["ACATCT",1],"GATGTC":["ACATCG",1],"GATGTG":["ACATCC",1],"GATGTT":["AACATC",1],"GATTAA":["AAGATT",0],"GATTAC":["AATCGT",1],"GATTAG":["AATCCT",1],"GATTAT":["AATCAT",1],"GATTCA":["AATCTG",1],"GATTCC":["AATCGG",1],"GATTCG":["AATCCG",1],"GATTCT":["AATCAG",1],"GATTGA":["AATCTC",1],"GATTGC":["AATCGC",1],"GATTGG":["AATCCC",1],"GATTGT":["AATCAC",1],"GATTTA":["AAATCT",1],"GATTTC":["AAATCG",1],"GATTTG":["AAATCC",1],"GATTTT":["AAAATC",1],"GCAAAA":["AAAAGC",0],"GCAAAC":["AAACGC",0],"GCAAAG":["AAAGGC",0],"GCAAAT":["AAATGC",0],"GCAACA":["AACAGC",0],"GCAACC":["AACCGC",0],"GCAACG":["AACGGC",0],"GCAACT":["AACTGC",0],"GCAAGA":["AAGAGC",0],"GCAAGC":["AAGCGC",0],"GCAAGG":["AAGGGC",0],"GCAAGT":["AAGTGC",0],"GCAATA":["AATAGC",0],"GCAATC":["AATCGC",0],"GCAATG":["AATGGC",0],"GCAATT":["AATTGC",0],"GCACAA":["AAGCAC",0],"GCACAC":["ACACGC",0],"GCACAG":["ACAGGC",0],"GCACAT":["ACATGC",0],"GCACCA":["ACCAGC",0],"GCACCC":["ACCCGC",0],"GCACCG":["ACCGGC",0],"GCACCT":["ACCTGC",0],"GCACGA":["ACGAGC",0],"GCACGC":["ACGCGC",0],"GCACGG":["ACGGGC",0],"GCACGT":["ACGTGC",0],"GCACTA":["ACTAGC",0],"GCACTC":["ACTCGC",0],"GCACTG":["ACTGGC",0],"GCACTT":["AAGTGC",1],"GCAGAA":["AAGCAG",0],"GCAGAC":["ACGCAG",0],"GCAGAG":["AGAGGC",0],"GCAGAT":["AGATGC",0],"GCAGCC":["AGCCGC",0],"GCAGCG":["AGCGGC",0],"GCAGCT":["AGCTGC",0],"GCAGGA":["AGCAGG",0],"GCAGGC":["AGGCGC",0],"GCAGGG":["AGGGGC",0],"GCAGGT":["ACCTGC",1],"GCAGTA":["ACTGCT",1],"GCAGTC":["ACTGCG",1],"GCAGTG":["ACTGCC",1],"GCAGTT":["AACTGC",1],"GCATAA":["AAGCAT",0],"GCATAC":["ACGCAT",0],"GCATAG":["AGGCAT",0],"GCATAT":["ATATGC",0],"GCATCA":["AGCATC",0],"GCATCC":["ATCCGC",0],"GCATCG":["ATCGGC",0],"GCATCT":["AGATGC",1],"GCATGA":["AGCATG",0],"GCATGC":["ATGCGC",0],"GCATGG":["ATGCCC",1],"GCATGT":["ACATGC",1],"GCATTA":["AATGCT",1],"GCATTC":["AATGCG",1],"GCATTG":["AATGCC",1],"GCATTT":["AAATGC",1],"GCCAAA":["AAAGCC",0],"GCCAAC":["AACGCC",0],"GCCAAG":["AAGGCC",0],"GCCAAT":["AATGCC",0],"GCCACA":["ACAGCC",0],"GCCACC":["ACCGCC",0],"GCCACG":["ACGGCC",0],"GCCACT":["ACTGCC",0],"GCCAGA":["AGAGCC",0],"GCCAGC":["AGCGCC",0],"GCCAGG":["AGGGCC",0],"GCCAGT":["ACTGGC",1],"GCCATA":["AGCCAT",0],"GCCATC":["ATCGCC",0],"GCCATG":["ATGGCC",0],"GCCATT":["AATGGC",1],"GCCCAA":["AAGCCC",0],"GCCCAC":["ACGCCC",0],"GCCCAG":["AGGCCC",0],"GCCCAT":["ATGCCC",0],"GCCCCA":["AGCCCC",0],"GCCCCC":["CCCCCG",0],"GCCCCG":["CCCCGG",0],"GCCCCT":["AGGGGC",1],"GCCCGA":["AGCCCG",0],"GCCCGC":["CCCGCG",0],"GCCCGG":["CCCGGG",0],"GCCCGT":["ACGGGC",1],"GCCCTA":["AGCCCT",0],"GCCCTC":["AGGGCG",1],"GCCCTG":["AGGGCC",1],"GCCCTT":["AAGGGC",1],"GCCGAA":["AAGCCG",0],"GCCGAC":["ACGCCG",0],"GCCGAG":["AGGCCG",0],"GCCGAT":["ATCGGC",1],"GCCGCA":["AGCCGC",0],"GCCGCG":["CCGCGG",0],"GCCGCT":["AGCGGC",1],"GCCGGA":["AGCCGG",0],"GCCGGC":["CCGGCG",0],"GCCGGG":["CCCCGG",1],"GCCGGT":["ACCGGC",1],"GCCGTA":["ACGGCT",1],"GCCGTC":["ACGGCG",1],"GCCGTG":["ACGGCC",1],"GCCGTT":["AACGGC",1],"GCCTAA":["AAGCCT",0],"GCCTAC":["ACGCCT",0],"GCCTAG":["AGGCCT",0],"GCCTAT":["AGGCAT",1],"GCCTCA":["AGCCTC",0],"GCCTCC":["AGGCGG",1],"GCCTCG":["AGGCCG",1],"GCCTCT":["AGAGGC",1],"GCCTGA":["AGCCTG",0],"GCCTGC":["AGGCGC",1],"GCCTGG":["AGGCCC",1],"GCCTGT":["ACAGGC",1],"GCCTTA":["AAGGCT",1],"GCCTTC":["AAGGCG",1],"GCCTTG":["AAGGCC",1],"GCCTTT":["AAAGGC",1],"GCGAAA":["AAAGCG",0],"GCGAAC":["AACGCG",0],"GCGAAG":["AAGGCG",0],"GCGAAT":["AATGCG",0],"GCGACA":["ACAGCG",0],"GCGACC":["ACCGCG",0],"GCGACG":["ACGGCG",0],"GCGACT":["ACTGCG",0],"GCGAGA":["AGAGCG",0],"GCGAGC":["AGCGCG",0],"GCGAGG":["AGGGCG",0],"GCGAGT":["ACTCGC",1],"GCGATA":["AGCGAT",0],"GCGATC":["ATCGCG",0],"GCGATG":["ATCGCC",1],"GCGATT":["AATCGC",1],"GCGCAA":["AAGCGC",0],"GCGCAC":["ACGCGC",0],"GCGCAG":["AGGCGC",0],"GCGCAT":["ATGCGC",0],"GCGCCA":["AGCGCC",0],"GCGCCC":["CCCGCG",0],"GCGCCG":["CCGGCG",0],"GCGCCT":["AGGCGC",1],"GCGCGA":["AGCGCG",0],"GCGCGG":["CCCGCG",1],"GCGCGT":["ACGCGC",1],"GCGCTA":["AGCGCT",0],"GCGCTC":["AGCGCG",1],"GCGCTG":["AGCGCC",1],"GCGCTT":["AAGCGC",1],"GCGGAA":["AAGCGG",0],"GCGGAC":["ACGCGG",0],"GCGGAG":["AGGCGG",0],"GCGGAT":["ATCCGC",1],"GCGGCA":["AGCGGC",0],"GCGGCC":["CCGCGG",0],"GCGGCT":["AGCCGC",1],"GCGGGA":["AGCGGG",0],"GCGGGC":["CCCGCG",1],"GCGGGG":["CCCCCG",1],"GCGGGT":["ACCCGC",1],"GCGGTA":["ACCGCT",1],"GCGGTC":["ACCGCG",1],"GCGGTG":["ACCGCC",1],"GCGGTT":["AACCGC",1],"GCGTAA":["AAGCGT",0],"GCGTAC":["ACGCGT",0],"GCGTAG":["ACGCCT",1],"GCGTAT":["ACGCAT",1],"GCGTCA":["ACGCTG",1],"GCGTCC":["ACGCGG",1],"GCGTCG":["ACGCCG",1],"GCGTCT":["ACGCAG",1],"GCGTGA":["ACGCTC",1],"GCGTGC":["ACGCGC",1],"GCGTGG":["ACGCCC",1],"GCGTGT":["ACACGC",1],"GCGTTA":["AACGCT",1],"GCGTTC":["AACGCG",1],"GCGTTG":["AACGCC",1],"GCGTTT":["AAACGC",1],"GCTAAA":["AAAGCT",0],"GCTAAC":["AACGCT",0],"GCTAAG":["AAGGCT",0],"GCTAAT":["AATGCT",0],"GCTACA":["ACAGCT",0],"GCTACC":["ACCGCT",0],"GCTACG":["ACGGCT",0],"GCTACT":["ACTGCT",0],"GCTAGA":["AGAGCT",0],"GCTAGC":["AGCGCT",0],"GCTAGG":["AGCCCT",1],"GCTAGT":["ACTAGC",1],"GCTATA":["AGCTAT",0],"GCTATC":["AGCGAT",1],"GCTATG":["AGCCAT",1],"GCTATT":["AATAGC",1],"GCTCAA":["AAGCTC",0],"GCTCAC":["ACGCTC",0],"GCTCAG":["AGCCTG",1],"GCTCAT":["AGCATG",1],"GCTCCA":["AGCTCC",0],"GCTCCC":["AGCGGG",1],"GCTCCG":["AGCCGG",1],"GCTCCT":["AGCAGG",1],"GCTCGA":["AGCTCG",0],"GCTCGC":["AGCGCG",1],"GCTCGG":["AGCCCG",1],"GCTCGT":["ACGAGC",1],"GCTCTA":["AGAGCT",1],"GCTCTC":["AGAGCG",1],"GCTCTG":["AGAGCC",1],"GCTCTT":["AAGAGC",1],"GCTGAA":["AAGCTG",0],"GCTGAC":["ACGCTG",0],"GCTGAG":["AGCCTC",1],"GCTGAT":["AGCATC",1],"GCTGCA":["AGCTGC",0],"GCTGCC":["AGCGGC",1],"GCTGCG":["AGCCGC",1],"GCTGGA":["AGCTCC",1],"GCTGGC":["AGCGCC",1],"GCTGGG":["AGCCCC",1],"GCTGGT":["ACCAGC",1],"GCTGTA":["ACAGCT",1],"GCTGTC":["ACAGCG",1],"GCTGTG":["ACAGCC",1],"GCTGTT":["AACAGC",1],"GCTTAA":["AAGCTT",0],"GCTTAC":["AAGCGT",1],"GCTTAG":["AAGCCT",1],"GCTTAT":["AAGCAT",1],"GCTTCA":["AAGCTG",1],"GCTTCC":["AAGCGG",1],"GCTTCG":["AAGCCG",1],"GCTTCT":["AAGCAG",1],"GCTTGA":["AAGCTC",1],"GCTTGC":["AAGCGC",1],"GCTTGG":["AAGCCC",1],"GCTTGT":["AAGCAC",1],"GCTTTA":["AAAGCT",1],"GCTTTC":["AAAGCG",1],"GCTTTG":["AAAGCC",1],"GCTTTT":["AAAAGC",1],"GGAAAA":["AAAAGG",0],"GGAAAC":["AAACGG",0],"GGAAAG":["AAAGGG",0],"GGAAAT":["AAATGG",0],"GGAACA":["AACAGG",0],"GGAACC":["AACCGG",0],"GGAACG":["AACGGG",0],"GGAACT":["AACTGG",0],"GGAAGA":["AAGAGG",0],"GGAAGC":["AAGCGG",0],"GGAAGG":["AAGGGG",0],"GGAAGT":["AAGTGG",0],"GGAATA":["AATAGG",0],"GGAATC":["AATCGG",0],"GGAATG":["AATGGG",0],"GGAATT":["AATTCC",1],"GGACAA":["AAGGAC",0],"GGACAC":["ACACGG",0],"GGACAG":["ACAGGG",0],"GGACAT":["ACATGG",0],"GGACCA":["ACCAGG",0],"GGACCC":["ACCCGG",0],"GGACCG":["ACCGGG",0],"GGACCT":["ACCTGG",0],"GGACGA":["ACGAGG",0],"GGACGC":["ACGCGG",0],"GGACGG":["ACGGGG",0],"GGACGT":["ACGTCC",1],"GGACTA":["ACTAGG",0],"GGACTC":["ACTCGG",0],"GGACTG":["ACTGGG",0],"GGACTT":["AAGTCC",1],"GGAGAA":["AAGGAG",0],"GGAGAC":["ACGGAG",0],"GGAGAG":["AGAGGG",0],"GGAGAT":["AGATGG",0],"GGAGCA":["AGCAGG",0],"GGAGCC":["AGCCGG",0],"GGAGCG":["AGCGGG",0],"GGAGCT":["AGCTCC",1],"GGAGGC":["AGGCGG",0],"GGAGGG":["AGGGGG",0],"GGAGGT":["ACCTCC",1],"GGAGTA":["ACTCCT",1],"GGAGTC":["ACTCCG",1],"GGAGTG":["ACTCCC",1],"GGAGTT":["AACTCC",1],"GGATAA":["AAGGAT",0],"GGATAC":["ACGGAT",0],"GGATAG":["AGGGAT",0],"GGATAT":["ATATCC",1],"GGATCA":["AGGATC",0],"GGATCC":["ATCCGG",0],"GGATCG":["ATCCCG",1],"GGATCT":["AGATCC",1],"GGATGA":["AGGATG",0],"GGATGC":["ATCCGC",1],"GGATGG":["ATCCCC",1],"GGATGT":["ACATCC",1],"GGATTA":["AATCCT",1],"GGATTC":["AATCCG",1],"GGATTG":["AATCCC",1],"GGATTT":["AAATCC",1],"GGCAAA":["AAAGGC",0],"GGCAAC":["AACGGC",0],"GGCAAG":["AAGGGC",0],"GGCAAT":["AATGGC",0],"GGCACA":["ACAGGC",0],"GGCACC":["ACCGGC",0],"GGCACG":["ACGGGC",0],"GGCACT":["ACTGGC",0],"GGCAGA":["AGAGGC",0],"GGCAGC":["AGCGGC",0],"GGCAGG":["AGGGGC",0],"GGCAGT":["ACTGCC",1],"GGCATA":["AGGCAT",0],"GGCATC":["ATCGGC",0],"GGCATG":["ATGCCC",1],"GGCATT":["AATGCC",1],"GGCCAA":["AAGGCC",0],"GGCCAC":["ACGGCC",0],"GGCCAG":["AGGGCC",0],"GGCCAT":["ATGGCC",0],"GGCCCA":["AGGCCC",0],"GGCCCC":["CCCCGG",0],"GGCCCG":["CCCGGG",0],"GGCCCT":["AGGGCC",1],"GGCCGA":["AGGCCG",0],"GGCCGC":["CCGCGG",0],"GGCCGG":["CCCCGG",1],"GGCCGT":["ACGGCC",1],"GGCCTA":["AGGCCT",0],"GGCCTC":["AGGCCG",1],"GGCCTG":["AGGCCC",1],"GGCCTT":["AAGGCC",1],"GGCGAA":["AAGGCG",0],"GGCGAC":["ACGGCG",0],"GGCGAG":["AGGGCG",0],"GGCGAT":["ATCGCC",1],"GGCGCA":["AGGCGC",0],"GGCGCC":["CCGGCG",0],"GGCGCG":["CCCGCG",1],"GGCGCT":["AGCGCC",1],"GGCGGA":["AGGCGG",0],"GGCGGG":["CCCCCG",1],"GGCGGT":["ACCGCC",1],"GGCGTA":["ACGCCT",1],"GGCGTC":["ACGCCG",1],"GGCGTG":["ACGCCC",1],"GGCGTT":["AACGCC",1],"GGCTAA":["AAGGCT",0],"GGCTAC":["ACGGCT",0],"GGCTAG":["AGCCCT",1],"GGCTAT":["AGCCAT",1],"GGCTCA":["AGCCTG",1],"GGCTCC":["AGCCGG",1],"GGCTCG":["AGCCCG",1],"GGCTCT":["AGAGCC",1],"GGCTGA":["AGCCTC",1],"GGCTGC":["AGCCGC",1],"GGCTGG":["AGCCCC",1],"GGCTGT":["ACAGCC",1],"GGCTTA":["AAGCCT",1],"GGCTTC":["AAGCCG",1],"GGCTTG":["AAGCCC",1],"GGCTTT":["AAAGCC",1],"GGGAAA":["AAAGGG",0],"GGGAAC":["AACGGG",0],"GGGAAG":["AAGGGG",0],"GGGAAT":["AATGGG",0],"GGGACA":["ACAGGG",0],"GGGACC":["ACCGGG",0],"GGGACG":["ACGGGG",0],"GGGACT":["ACTGGG",0],"GGGAGA":["AGAGGG",0],"GGGAGC":["AGCGGG",0],"GGGAGG":["AGGGGG",0],"GGGAGT":["ACTCCC",1],"GGGATA":["AGGGAT",0],"GGGATC":["ATCCCG",1],"GGGATG":["ATCCCC",1],"GGGATT":["AATCCC",1],"GGGCAA":["AAGGGC",0],"GGGCAC":["ACGGGC",0],"GGGCAG":["AGGGGC",0],"GGGCAT":["ATGCCC",1],"GGGCCA":["AGGGCC",0],"GGGCCC":["CCCGGG",0],"GGGCCG":["CCCCGG",1],"GGGCCT":["AGGCCC",1],"GGGCGA":["AGGGCG",0],"GGGCGC":["CCCGCG",1],"GGGCGG":["CCCCCG",1],"GGGCGT":["ACGCCC",1],"GGGCTA":["AGCCCT",1],"GGGCTC":["AGCCCG",1],"GGGCTG":["AGCCCC",1],"GGGCTT":["AAGCCC",1],"GGGGAA":["AAGGGG",0],"GGGGAC":["ACGGGG",0],"GGGGAG":["AGGGGG",0],"GGGGAT":["ATCCCC",1],"GGGGCA":["AGGGGC",0],"GGGGCC":["CCCCGG",1],"GGGGCG":["CCCCCG",1],"GGGGCT":["AGCCCC",1],"GGGGGA":["AGGGGG",0],"GGGGGC":["CCCCCG",1],"GGGGGT":["ACCCCC",1],"GGGGTA":["ACCCCT",1],"GGGGTC":["ACCCCG",1],"GGGGTG":["ACCCCC",1],"GGGGTT":["AACCCC",1],"GGGTAA":["AAGGGT",0],"GGGTAC":["ACCCGT",1],"GGGTAG":["ACCCCT",1],"GGGTAT":["ACCCAT",1],"GGGTCA":["ACCCTG",1],"GGGTCC":["ACCCGG",1],"GGGTCG":["ACCCCG",1],"GGGTCT":["ACCCAG",1],"GGGTGA":["ACCCTC",1],"GGGTGC":["ACCCGC",1],"GGGTGG":["ACCCCC",1],"GGGTGT":["ACACCC",1],"GGGTTA":["AACCCT",1],"GGGTTC":["AACCCG",1],"GGGTTG":["AACCCC",1],"GGGTTT":["AAACCC",1],"GGTAAA":["AAAGGT",0],"GGTAAC":["AACGGT",0],"GGTAAG":["AAGGGT",0],"GGTAAT":["AATGGT",0],"GGTACA":["ACAGGT",0],"GGTACC":["ACCGGT",0],"GGTACG":["ACCCGT",1],"GGTACT":["ACCAGT",1],"GGTAGA":["ACCTCT",1],"GGTAGC":["ACCGCT",1],"GGTAGG":["ACCCCT",1],"GGTAGT":["ACCACT",1],"GGTATA":["ACCTAT",1],"GGTATC":["ACCGAT",1],"GGTATG":["ACCCAT",1],"GGTATT":["AATACC",1],"GGTCAA":["AAGGTC",0],"GGTCAC":["ACCGTG",1],"GGTCAG":["ACCCTG",1],"GGTCAT":["ACCATG",1],"GGTCCA":["ACCTGG",1],"GGTCCC":["ACCGGG",1],"GGTCCG":["ACCCGG",1],"GGTCCT":["ACCAGG",1],"GGTCGA":["ACCTCG",1],"GGTCGC":["ACCGCG",1],"GGTCGG":["ACCCCG",1],"GGTCGT":["ACCACG",1],"GGTCTA":["ACCTAG",1],"GGTCTC":["ACCGAG",1],"GGTCTG":["ACCCAG",1],"GGTCTT":["AAGACC",1],"GGTGAA":["AAGGTG",0],"GGTGAC":["ACCGTC",1],"GGTGAG":["ACCCTC",1],"GGTGAT":["ACCATC",1],"GGTGCA":["ACCTGC",1],"GGTGCC":["ACCGGC",1],"GGTGCG":["ACCCGC",1],"GGTGCT":["ACCAGC",1],"GGTGGA":["ACCTCC",1],"GGTGGC":["ACCGCC",1],"GGTGGG":["ACCCCC",1],"GGTGTA":["ACACCT",1],"GGTGTC":["ACACCG",1],"GGTGTG":["ACACCC",1],"GGTGTT":["AACACC",1],"GGTTAA":["AACCTT",1],"GGTTAC":["AACCGT",1],"GGTTAG":["AACCCT",1],"GGTTAT":["AACCAT",1],"GGTTCA":["AACCTG",1],"GGTTCC":["AACCGG",1],"GGTTCG":["AACCCG",1],"GGTTCT":["AACCAG",1],"GGTTGA":["AACCTC",1],"GGTTGC":["AACCGC",1],"GGTTGG":["AACCCC",1],"GGTTGT":["AACCAC",1],"GGTTTA":["AAACCT",1],"GGTTTC":["AAACCG",1],"GGTTTG":["AAACCC",1],"GGTTTT":["AAAACC",1],"GTAAAA":["AAAAGT",0],"GTAAAC":["AAACGT",0],"GTAAAG":["AAAGGT",0],"GTAAAT":["AAATGT",0],"GTAACA":["AACAGT",0],"GTAACC":["AACCGT",0],"GTAACG":["AACGGT",0],"GTAACT":["AACTGT",0],"GTAAGA":["AAGAGT",0],"GTAAGC":["AAGCGT",0],"GTAAGG":["AAGGGT",0],"GTAAGT":["AAGTGT",0],"GTAATA":["AATAGT",0],"GTAATC":["AATCGT",0],"GTAATG":["AATGGT",0],"GTAATT":["AATTAC",1],"GTACAA":["AAGTAC",0],"GTACAC":["ACACGT",0],"GTACAG":["ACAGGT",0],"GTACAT":["ACATGT",0],"GTACCA":["ACCAGT",0],"GTACCC":["ACCCGT",0],"GTACCG":["ACCGGT",0],"GTACCT":["ACAGGT",1],"GTACGA":["ACGAGT",0],"GTACGC":["ACGCGT",0],"GTACGG":["ACCCGT",1],"GTACGT":["ACACGT",1],"GTACTA":["ACTAGT",0],"GTACTC":["ACGAGT",1],"GTACTG":["ACCAGT",1],"GTACTT":["AAGTAC",1],"GTAGAA":["AAGTAG",0],"GTAGAC":["ACGTAG",0],"GTAGAG":["ACCTCT",1],"GTAGAT":["ACATCT",1],"GTAGCA":["ACTGCT",1],"GTAGCC":["ACGGCT",1],"GTAGCG":["ACCGCT",1],"GTAGCT":["ACAGCT",1],"GTAGGA":["ACTCCT",1],"GTAGGC":["ACGCCT",1],"GTAGGG":["ACCCCT",1],"GTAGGT":["ACACCT",1],"GTAGTC":["ACGACT",1],"GTAGTG":["ACCACT",1],"GTAGTT":["AACTAC",1],"GTATAA":["AAGTAT",0],"GTATAC":["ACGTAT",0],"GTATAG":["ACCTAT",1],"GTATAT":["ACATAT",1],"GTATCA":["ACTGAT",1],"GTATCC":["ACGGAT",1],"GTATCG":["ACCGAT",1],"GTATCT":["ACAGAT",1],"GTATGA":["ACTCAT",1],"GTATGC":["ACGCAT",1],"GTATGG":["ACCCAT",1],"GTATGT":["ACACAT",1],"GTATTA":["AATACT",1],"GTATTC":["AATACG",1],"GTATTG":["AATACC",1],"GTATTT":["AAATAC",1],"GTCAAA":["AAAGTC",0],"GTCAAC":["AACGTC",0],"GTCAAG":["AAGGTC",0],"GTCAAT":["AATGTC",0],"GTCACA":["ACAGTC",0],"GTCACC":["ACCGTC",0],"GTCACG":["ACCGTG",1],"GTCACT":["ACAGTG",1],"GTCAGA":["ACTCTG",1],"GTCAGC":["ACGCTG",1],"GTCAGG":["ACCCTG",1],"GTCAGT":["ACACTG",1],"GTCATA":["ACTATG",1],"GTCATC":["ACGATG",1],"GTCATG":["ACCATG",1],"GTCATT":["AATGAC",1],"GTCCAA":["AAGTCC",0],"GTCCAC":["ACGTCC",0],"GTCCAG":["ACCTGG",1],"GTCCAT":["ACATGG",1],"GTCCCA":["ACTGGG",1],"GTCCCC":["ACGGGG",1],"GTCCCG":["ACCGGG",1],"GTCCCT":["ACAGGG",1],"GTCCGA":["ACTCGG",1],"GTCCGC":["ACGCGG",1],"GTCCGG":["ACCCGG",1],"GTCCGT":["ACACGG",1],"GTCCTA":["ACTAGG",1],"GTCCTC":["ACGAGG",1],"GTCCTG":["ACCAGG",1],"GTCCTT":["AAGGAC",1],"GTCGAA":["AAGTCG",0],"GTCGAC":["ACGTCG",0],"GTCGAG":["ACCTCG",1],"GTCGAT":["ACATCG",1],"GTCGCA":["ACTGCG",1],"GTCGCC":["ACGGCG",1],"GTCGCG":["ACCGCG",1],"GTCGCT":["ACAGCG",1],"GTCGGA":["ACTCCG",1],"GTCGGC":["ACGCCG",1],"GTCGGG":["ACCCCG",1],"GTCGGT":["ACACCG",1],"GTCGTA":["ACGACT",1],"GTCGTG":["ACCACG",1],"GTCGTT":["AACGAC",1],"GTCTAA":["AAGTCT",0],"GTCTAC":["ACGTAG",1],"GTCTAG":["ACCTAG",1],"GTCTAT":["ACATAG",1],"GTCTCA":["ACTGAG",1],"GTCTCC":["ACGGAG",1],"GTCTCG":["ACCGAG",1],"GTCTCT":["ACAGAG",1],"GTCTGA":["ACTCAG",1],"GTCTGC":["ACGCAG",1],"GTCTGG":["ACCCAG",1],"GTCTGT":["ACACAG",1],"GTCTTA":["AAGACT",1],"GTCTTC":["AAGACG",1],"GTCTTG":["AAGACC",1],"GTCTTT":["AAAGAC",1],"GTGAAA":["AAAGTG",0],"GTGAAC":["AACGTG",0],"GTGAAG":["AAGGTG",0],"GTGAAT":["AATGTG",0],"GTGACA":["ACAGTG",0],"GTGACC":["ACCGTG",0],"GTGACG":["ACCGTC",1],"GTGACT":["ACAGTC",1],"GTGAGA":["ACTCTC",1],"GTGAGC":["ACGCTC",1],"GTGAGG":["ACCCTC",1],"GTGAGT":["ACACTC",1],"GTGATA":["ACTATC",1],"GTGATC":["ACGATC",1],"GTGATG":["ACCATC",1],"GTGATT":["AATCAC",1],"GTGCAA":["AAGTGC",0],"GTGCAC":["ACGTGC",0],"GTGCAG":["ACCTGC",1],"GTGCAT":["ACATGC",1],"GTGCCA":["ACTGGC",1],"GTGCCC":["ACGGGC",1],"GTGCCG":["ACCGGC",1],"GTGCCT":["ACAGGC",1],"GTGCGA":["ACTCGC",1],"GTGCGC":["ACGCGC",1],"GTGCGG":["ACCCGC",1],"GTGCGT":["ACACGC",1],"GTGCTA":["ACTAGC",1],"GTGCTC":["ACGAGC",1],"GTGCTG":["ACCAGC",1],"GTGCTT":["AAGCAC",1],"GTGGAA":["AAGTGG",0],"GTGGAC":["ACGTCC",1],"GTGGAG":["ACCTCC",1],"GTGGAT":["ACATCC",1],"GTGGCA":["ACTGCC",1],"GTGGCC":["ACGGCC",1],"GTGGCG":["ACCGCC",1],"GTGGCT":["ACAGCC",1],"GTGGGA":["ACTCCC",1],"GTGGGC":["ACGCCC",1],"GTGGGG":["ACCCCC",1],"GTGGGT":["ACACCC",1],"GTGGTA":["ACCACT",1],"GTGGTC":["ACCACG",1],"GTGGTT":["AACCAC",1],"GTGTAA":["AAGTGT",0],"GTGTAC":["ACACGT",1],"GTGTAG":["ACACCT",1],"GTGTAT":["ACACAT",1],"GTGTCA":["ACACTG",1],"GTGTCC":["ACACGG",1],"GTGTCG":["ACACCG",1],"GTGTCT":["ACACAG",1],"GTGTGA":["ACACTC",1],"GTGTGC":["ACACGC",1],"GTGTGG":["ACACCC",1],"GTGTTA":["AACACT",1],"GTGTTC":["AACACG",1],"GTGTTG":["AACACC",1],"GTGTTT":["AAACAC",1],"GTTAAA":["AAAGTT",0],"GTTAAC":["AACGTT",0],"GTTAAG":["AACCTT",1],"GTTAAT":["AACATT",1],"GTTACA":["AACTGT",1],"GTTACC":["AACGGT",1],"GTTACG":["AACCGT",1],"GTTACT":["AACAGT",1],"GTTAGA":["AACTCT",1],"GTTAGC":["AACGCT",1],"GTTAGG":["AACCCT",1],"GTTAGT":["AACACT",1],"GTTATA":["AACTAT",1],"GTTATC":["AACGAT",1],"GTTATG":["AACCAT",1],"GTTATT":["AACAAT",1],"GTTCAA":["AACTTG",1],"GTTCAC":["AACGTG",1],"GTTCAG":["AACCTG",1],"GTTCAT":["AACATG",1],"GTTCCA":["AACTGG",1],"GTTCCC":["AACGGG",1],"GTTCCG":["AACCGG",1],"GTTCCT":["AACAGG",1],"GTTCGA":["AACTCG",1],"GTTCGC":["AACGCG",1],"GTTCGG":["AACCCG",1],"GTTCGT":["AACACG",1],"GTTCTA":["AACTAG",1],"GTTCTC":["AACGAG",1],"GTTCTG":["AACCAG",1],"GTTCTT":["AACAAG",1],"GTTGAA":["AACTTC",1],"GTTGAC":["AACGTC",1],"GTTGAG":["AACCTC",1],"GTTGAT":["AACATC",1],"GTTGCA":["AACTGC",1],"GTTGCC":["AACGGC",1],"GTTGCG":["AACCGC",1],"GTTGCT":["AACAGC",1],"GTTGGA":["AACTCC",1],"GTTGGC":["AACGCC",1],"GTTGGG":["AACCCC",1],"GTTGGT":["AACACC",1],"GTTGTA":["AACTAC",1],"GTTGTC":["AACGAC",1],"GTTGTG":["AACCAC",1],"GTTTAA":["AAACTT",1],"GTTTAC":["AAACGT",1],"GTTTAG":["AAACCT",1],"GTTTAT":["AAACAT",1],"GTTTCA":["AAACTG",1],"GTTTCC":["AAACGG",1],"GTTTCG":["AAACCG",1],"GTTTCT":["AAACAG",1],"GTTTGA":["AAACTC",1],"GTTTGC":["AAACGC",1],"GTTTGG":["AAACCC",1],"GTTTGT":["AAACAC",1],"GTTTTA":["AAAACT",1],"GTTTTC":["AAAACG",1],"GTTTTG":["AAAACC",1],"GTTTTT":["AAAAAC",1],"TAAAAA":["AAAAAT",0],"TAAAAC":["AAAACT",0],"TAAAAG":["AAAAGT",0],"TAAAAT":["AAAATT",0],"TAAACA":["AAACAT",0],"TAAACC":["AAACCT",0],"TAAACG":["AAACGT",0],"TAAACT":["AAACTT",0],"TAAAGA":["AAAGAT",0],"TAAAGC":["AAAGCT",0],"TAAAGG":["AAAGGT",0],"TAAAGT":["AAAGTT",0],"TAAATA":["AAATAT",0],"TAAATC":["AAATCT",0],"TAAATG":["AAATGT",0],"TAAATT":["AAATTT",0],"TAACAA":["AACAAT",0],"TAACAC":["AACACT",0],"TAACAG":["AACAGT",0],"TAACAT":["AACATT",0],"TAACCA":["AACCAT",0],"TAACCC":["AACCCT",0],"TAACCG":["AACCGT",0],"TAACCT":["AACCTT",0],"TAACGA":["AACGAT",0],"TAACGC":["AACGCT",0],"TAACGG":["AACGGT",0],"TAACGT":["AACGTT",0],"TAACTA":["AACTAT",0],"TAACTC":["AACTCT",0],"TAACTG":["AACTGT",0],"TAACTT":["AAAGTT",1],"TAAGAA":["AAGAAT",0],"TAAGAC":["AAGACT",0],"TAAGAG":["AAGAGT",0],"TAAGAT":["AAGATT",0],"TAAGCA":["AAGCAT",0],"TAAGCC":["AAGCCT",0],"TAAGCG":["AAGCGT",0],"TAAGCT":["AAGCTT",0],"TAAGGA":["AAGGAT",0],"TAAGGC":["AAGGCT",0],"TAAGGG":["AAGGGT",0],"TAAGGT":["AACCTT",1],"TAAGTA":["AAGTAT",0],"TAAGTC":["AAGTCT",0],"TAAGTG":["AAGTGT",0],"TAAGTT":["AAACTT",1],"TAATAC":["AATACT",0],"TAATAG":["AATAGT",0],"TAATAT":["AATATT",0],"TAATCA":["AATCAT",0],"TAATCC":["AATCCT",0],"TAATCG":["AATCGT",0],"TAATCT":["AAGATT",1],"TAATGA":["AATGAT",0],"TAATGC":["AATGCT",0],"TAATGG":["AATGGT",0],"TAATGT":["AACATT",1],"TAATTA":["AATTAT",0],"TAATTC":["AATTAG",1],"TAATTG":["AATTAC",1],"TAATTT":["AAAATT",1],"TACAAA":["AAATAC",0],"TACAAC":["AACTAC",0],"TACAAG":["AAGTAC",0],"TACAAT":["AATTAC",0],"TACACA":["ACACAT",0],"TACACC":["ACACCT",0],"TACACG":["ACACGT",0],"TACACT":["AAGTGT",1],"TACAGA":["ACAGAT",0],"TACAGC":["ACAGCT",0],"TACAGG":["ACAGGT",0],"TACAGT":["AACTGT",1],"TACATA":["ACATAT",0],"TACATC":["ACATCT",0],"TACATG":["ACATGT",0],"TACATT":["AAATGT",1],"TACCAA":["AATACC",0],"TACCAC":["ACCACT",0],"TACCAG":["ACCAGT",0],"TACCAT":["AATGGT",1],"TACCCA":["ACCCAT",0],"TACCCC":["ACCCCT",0],"TACCCG":["ACCCGT",0],"TACCCT":["AAGGGT",1],"TACCGA":["ACCGAT",0],"TACCGC":["ACCGCT",0],"TACCGG":["ACCGGT",0],"TACCGT":["AACGGT",1],"TACCTA":["ACCTAT",0],"TACCTC":["ACCTCT",0],"TACCTG":["ACAGGT",1],"TACCTT":["AAAGGT",1],"TACGAA":["AATACG",0],"TACGAC":["ACGACT",0],"TACGAG":["ACGAGT",0],"TACGAT":["AATCGT",1],"TACGCA":["ACGCAT",0],"TACGCC":["ACGCCT",0],"TACGCG":["ACGCGT",0],"TACGCT":["AAGCGT",1],"TACGGA":["ACGGAT",0],"TACGGC":["ACGGCT",0],"TACGGG":["ACCCGT",1],"TACGGT":["AACCGT",1],"TACGTA":["ACGTAT",0],"TACGTC":["ACGTAG",1],"TACGTG":["ACACGT",1],"TACGTT":["AAACGT",1],"TACTAA":["AATACT",0],"TACTAG":["ACTAGT",0],"TACTAT":["AATAGT",1],"TACTCA":["ACTCAT",0],"TACTCC":["ACTCCT",0],"TACTCG":["ACGAGT",1],"TACTCT":["AAGAGT",1],"TACTGA":["ACTGAT",0],"TACTGC":["ACTGCT",0],"TACTGG":["ACCAGT",1],"TACTGT":["AACAGT",1],"TACTTA":["AAGTAT",1],"TACTTC":["AAGTAG",1],"TACTTG":["AAGTAC",1],"TACTTT":["AAAAGT",1],"TAGAAA":["AAATAG",0],"TAGAAC":["AACTAG",0],"TAGAAG":["AAGTAG",0],"TAGAAT":["AATTAG",0],"TAGACA":["ACATAG",0],"TAGACC":["ACCTAG",0],"TAGACG":["ACGTAG",0],"TAGACT":["AAGTCT",1],"TAGAGA":["AGAGAT",0],"TAGAGC":["AGAGCT",0],"TAGAGG":["ACCTCT",1],"TAGAGT":["AACTCT",1],"TAGATA":["AGATAT",0],"TAGATC":["AGATCT",0],"TAGATG":["ACATCT",1],"TAGATT":["AAATCT",1],"TAGCAA":["AATAGC",0],"TAGCAC":["ACTAGC",0],"TAGCAG":["ACTGCT",1],"TAGCAT":["AATGCT",1],"TAGCCA":["AGCCAT",0],"TAGCCC":["AGCCCT",0],"TAGCCG":["ACGGCT",1],"TAGCCT":["AAGGCT",1],"TAGCGA":["AGCGAT",0],"TAGCGC":["AGCGCT",0],"TAGCGG":["ACCGCT",1],"TAGCGT":["AACGCT",1],"TAGCTA":["AGCTAT",0],"TAGCTC":["AGAGCT",1],"TAGCTG":["ACAGCT",1],"TAGCTT":["AAAGCT",1],"TAGGAA":["AATAGG",0],"TAGGAC":["ACTAGG",0],"TAGGAG":["ACTCCT",1],"TAGGAT":["AATCCT",1],"TAGGCA":["AGGCAT",0],"TAGGCC":["AGGCCT",0],"TAGGCG":["ACGCCT",1],"TAGGCT":["AAGCCT",1],"TAGGGA":["AGGGAT",0],"TAGGGC":["AGCCCT",1],"TAGGGG":["ACCCCT",1],"TAGGGT":["AACCCT",1],"TAGGTA":["ACCTAT",1],"TAGGTC":["ACCTAG",1],"TAGGTG":["ACACCT",1],"TAGGTT":["AAACCT",1],"TAGTAA":["AATAGT",0],"TAGTAC":["ACTAGT",0],"TAGTAT":["AATACT",1],"TAGTCA":["ACTATG",1],"TAGTCC":["ACTAGG",1],"TAGTCG":["ACGACT",1],"TAGTCT":["AAGACT",1],"TAGTGA":["ACTATC",1],"TAGTGC":["ACTAGC",1],"TAGTGG":["ACCACT",1],"TAGTGT":["AACACT",1],"TAGTTA":["AACTAT",1],"TAGTTC":["AACTAG",1],"TAGTTG":["AACTAC",1],"TAGTTT":["AAAACT",1],"TATAAA":["AAATAT",0],"TATAAC":["AACTAT",0],"TATAAG":["AAGTAT",0],"TATAAT":["AATTAT",0],"TATACA":["ACATAT",0],"TATACC":["ACCTAT",0],"TATACG":["ACGTAT",0],"TATACT":["AAGTAT",1],"TATAGA":["AGATAT",0],"TATAGC":["AGCTAT",0],"TATAGG":["ACCTAT",1],"TATAGT":["AACTAT",1],"TATATC":["AGATAT",1],"TATATG":["ACATAT",1],"TATATT":["AAATAT",1],"TATCAA":["AATATC",0],"TATCAC":["ACTATC",0],"TATCAG":["ACTGAT",1],"TATCAT":["AATGAT",1],"TATCCA":["ATATCC",0],"TATCCC":["AGGGAT",1],"TATCCG":["ACGGAT",1],"TATCCT":["AAGGAT",1],"TATCGA":["ATATCG",0],"TATCGC":["AGCGAT",1],"TATCGG":["ACCGAT",1],"TATCGT":["AACGAT",1],"TATCTA":["AGATAT",1],"TATCTC":["AGAGAT",1],"TATCTG":["ACAGAT",1],"TATCTT":["AAAGAT",1],"TATGAA":["AATATG",0],"TATGAC":["ACTATG",0],"TATGAG":["ACTCAT",1],"TATGAT":["AATCAT",1],"TATGCA":["ATATGC",0],"TATGCC":["AGGCAT",1],"TATGCG":["ACGCAT",1],"TATGCT":["AAGCAT",1],"TATGGA":["ATATCC",1],"TATGGC":["AGCCAT",1],"TATGGG":["ACCCAT",1],"TATGGT":["AACCAT",1],"TATGTA":["ACATAT",1],"TATGTC":["ACATAG",1],"TATGTG":["ACACAT",1],"TATGTT":["AAACAT",1],"TATTAA":["AATATT",0],"TATTAC":["AATAGT",1],"TATTAG":["AATACT",1],"TATTCA":["AATATG",1],"TATTCC":["AATAGG",1],"TATTCG":["AATACG",1],"TATTCT":["AAGAAT",1],"TATTGA":["AATATC",1],"TATTGC":["AATAGC",1],"TATTGG":["AATACC",1],"TATTGT":["AACAAT",1],"TATTTA":["AAATAT",1],"TATTTC":["AAATAG",1],"TATTTG":["AAATAC",1],"TATTTT":["AAAAAT",1],"TCAAAA":["AAAATC",0],"TCAAAC":["AAACTC",0],"TCAAAG":["AAAGTC",0],"TCAAAT":["AAATTC",0],"TCAACA":["AACATC",0],"TCAACC":["AACCTC",0],"TCAACG":["AACGTC",0],"TCAACT":["AACTTC",0],"TCAAGA":["AAGATC",0],"TCAAGC":["AAGCTC",0],"TCAAGG":["AAGGTC",0],"TCAAGT":["AACTTG",1],"TCAATA":["AATATC",0],"TCAATC":["AATCTC",0],"TCAATG":["AATGTC",0],"TCAATT":["AAATTG",1],"TCACAA":["AATCAC",0],"TCACAC":["ACACTC",0],"TCACAG":["ACAGTC",0],"TCACAT":["AATGTG",1],"TCACCA":["ACCATC",0],"TCACCC":["ACCCTC",0],"TCACCG":["ACCGTC",0],"TCACCT":["AAGGTG",1],"TCACGA":["ACGATC",0],"TCACGC":["ACGCTC",0],"TCACGG":["ACCGTG",1],"TCACGT":["AACGTG",1],"TCACTA":["ACTATC",0],"TCACTC":["ACTCTC",0],"TCACTG":["ACAGTG",1],"TCACTT":["AAAGTG",1],"TCAGAA":["AATCAG",0],"TCAGAC":["ACTCAG",0],"TCAGAG":["ACTCTG",1],"TCAGAT":["AATCTG",1],"TCAGCA":["AGCATC",0],"TCAGCC":["AGCCTC",0],"TCAGCG":["ACGCTG",1],"TCAGCT":["AAGCTG",1],"TCAGGA":["AGGATC",0],"TCAGGC":["AGCCTG",1],"TCAGGG":["ACCCTG",1],"TCAGGT":["AACCTG",1],"TCAGTA":["ACTGAT",1],"TCAGTC":["ACTGAG",1],"TCAGTG":["ACACTG",1],"TCAGTT":["AAACTG",1],"TCATAA":["AATCAT",0],"TCATAC":["ACTCAT",0],"TCATAG":["ACTATG",1],"TCATAT":["AATATG",1],"TCATCC":["AGGATG",1],"TCATCG":["ACGATG",1],"TCATCT":["AAGATG",1],"TCATGA":["ATCATG",0],"TCATGC":["AGCATG",1],"TCATGG":["ACCATG",1],"TCATGT":["AACATG",1],"TCATTA":["AATGAT",1],"TCATTC":["AATGAG",1],"TCATTG":["AATGAC",1],"TCATTT":["AAAATG",1],"TCCAAA":["AAATCC",0],"TCCAAC":["AACTCC",0],"TCCAAG":["AAGTCC",0],"TCCAAT":["AATTCC",0],"TCCACA":["ACATCC",0],"TCCACC":["ACCTCC",0],"TCCACG":["ACGTCC",0],"TCCACT":["AAGTGG",1],"TCCAGA":["AGATCC",0],"TCCAGC":["AGCTCC",0],"TCCAGG":["ACCTGG",1],"TCCAGT":["AACTGG",1],"TCCATA":["ATATCC",0],"TCCATC":["AGATGG",1],"TCCATG":["ACATGG",1],"TCCATT":["AAATGG",1],"TCCCAA":["AATCCC",0],"TCCCAC":["ACTCCC",0],"TCCCAG":["ACTGGG",1],"TCCCAT":["AATGGG",1],"TCCCCA":["ATCCCC",0],"TCCCCC":["AGGGGG",1],"TCCCCG":["ACGGGG",1],"TCCCCT":["AAGGGG",1],"TCCCGA":["ATCCCG",0],"TCCCGC":["AGCGGG",1],"TCCCGG":["ACCGGG",1],"TCCCGT":["AACGGG",1],"TCCCTA":["AGGGAT",1],"TCCCTC":["AGAGGG",1],"TCCCTG":["ACAGGG",1],"TCCCTT":["AAAGGG",1],"TCCGAA":["AATCCG",0],"TCCGAC":["ACTCCG",0],"TCCGAG":["ACTCGG",1],"TCCGAT":["AATCGG",1],"TCCGCA":["ATCCGC",0],"TCCGCC":["AGGCGG",1],"TCCGCG":["ACGCGG",1],"TCCGCT":["AAGCGG",1],"TCCGGA":["ATCCGG",0],"TCCGGC":["AGCCGG",1],"TCCGGG":["ACCCGG",1],"TCCGGT":["AACCGG",1],"TCCGTA":["ACGGAT",1],"TCCGTC":["ACGGAG",1],"TCCGTG":["ACACGG",1],"TCCGTT":["AAACGG",1],"TCCTAA":["AATCCT",0],"TCCTAC":["ACTCCT",0],"TCCTAG":["ACTAGG",1],"TCCTAT":["AATAGG",1],"TCCTCA":["AGGATG",1],"TCCTCG":["ACGAGG",1],"TCCTCT":["AAGAGG",1],"TCCTGA":["AGGATC",1],"TCCTGC":["AGCAGG",1],"TCCTGG":["ACCAGG",1],"TCCTGT":["AACAGG",1],"TCCTTA":["AAGGAT",1],"TCCTTC":["AAGGAG",1],"TCCTTG":["AAGGAC",1],"TCCTTT":["AAAAGG",1],"TCGAAA":["AAATCG",0],"TCGAAC":["AACTCG",0],"TCGAAG":["AAGTCG",0],"TCGAAT":["AATTCG",0],"TCGACA":["ACATCG",0],"TCGACC":["ACCTCG",0],"TCGACG":["ACGTCG",0],"TCGACT":["AAGTCG",1],"TCGAGA":["AGATCG",0],"TCGAGC":["AGCTCG",0],"TCGAGG":["ACCTCG",1],"TCGAGT":["AACTCG",1],"TCGATA":["ATATCG",0],"TCGATC":["AGATCG",1],"TCGATG":["ACATCG",1],"TCGATT":["AAATCG",1],"TCGCAA":["AATCGC",0],"TCGCAC":["ACTCGC",0],"TCGCAG":["ACTGCG",1],"TCGCAT":["AATGCG",1],"TCGCCA":["ATCGCC",0],"TCGCCC":["AGGGCG",1],"TCGCCG":["ACGGCG",1],"TCGCCT":["AAGGCG",1],"TCGCGA":["ATCGCG",0],"TCGCGC":["AGCGCG",1],"TCGCGG":["ACCGCG",1],"TCGCGT":["AACGCG",1],"TCGCTA":["AGCGAT",1],"TCGCTC":["AGAGCG",1],"TCGCTG":["ACAGCG",1],"TCGCTT":["AAAGCG",1],"TCGGAA":["AATCGG",0],"TCGGAC":["ACTCGG",0],"TCGGAG":["ACTCCG",1],"TCGGAT":["AATCCG",1],"TCGGCA":["ATCGGC",0],"TCGGCC":["AGGCCG",1],"TCGGCG":["ACGCCG",1],"TCGGCT":["AAGCCG",1],"TCGGGA":["ATCCCG",1],"TCGGGC":["AGCCCG",1],"TCGGGG":["ACCCCG",1],"TCGGGT":["AACCCG",1],"TCGGTA":["ACCGAT",1],"TCGGTC":["ACCGAG",1],"TCGGTG":["ACACCG",1],"TCGGTT":["AAACCG",1],"TCGTAA":["AATCGT",0],"TCGTAC":["ACGAGT",1],"TCGTAG":["ACGACT",1],"TCGTAT":["AATACG",1],"TCGTCA":["ACGATG",1],"TCGTCC":["ACGAGG",1],"TCGTCT":["AAGACG",1],"TCGTGA":["ACGATC",1],"TCGTGC":["ACGAGC",1],"TCGTGG":["ACCACG",1],"TCGTGT":["AACACG",1],"TCGTTA":["AACGAT",1],"TCGTTC":["AACGAG",1],"TCGTTG":["AACGAC",1],"TCGTTT":["AAAACG",1],"TCTAAA":["AAATCT",0],"TCTAAC":["AACTCT",0],"TCTAAG":["AAGTCT",0],"TCTAAT":["AATTAG",1],"TCTACA":["ACATCT",0],"TCTACC":["ACCTCT",0],"TCTACG":["ACGTAG",1],"TCTACT":["AAGTAG",1],"TCTAGA":["AGATCT",0],"TCTAGC":["AGAGCT",1],"TCTAGG":["ACCTAG",1],"TCTAGT":["AACTAG",1],"TCTATA":["AGATAT",1],"TCTATC":["AGAGAT",1],"TCTATG":["ACATAG",1],"TCTATT":["AAATAG",1],"TCTCAA":["AATCTC",0],"TCTCAC":["ACTCTC",0],"TCTCAG":["ACTGAG",1],"TCTCAT":["AATGAG",1],"TCTCCA":["AGATGG",1],"TCTCCC":["AGAGGG",1],"TCTCCG":["ACGGAG",1],"TCTCCT":["AAGGAG",1],"TCTCGA":["AGATCG",1],"TCTCGC":["AGAGCG",1],"TCTCGG":["ACCGAG",1],"TCTCGT":["AACGAG",1],"TCTCTA":["AGAGAT",1],"TCTCTG":["ACAGAG",1],"TCTCTT":["AAAGAG",1],"TCTGAA":["AATCTG",0],"TCTGAC":["ACTCTG",0],"TCTGAG":["ACTCAG",1],"TCTGAT":["AATCAG",1],"TCTGCA":["AGATGC",1],"TCTGCC":["AGAGGC",1],"TCTGCG":["ACGCAG",1],"TCTGCT":["AAGCAG",1],"TCTGGA":["AGATCC",1],"TCTGGC":["AGAGCC",1],"TCTGGG":["ACCCAG",1],"TCTGGT":["AACCAG",1],"TCTGTA":["ACAGAT",1],"TCTGTC":["ACAGAG",1],"TCTGTG":["ACACAG",1],"TCTGTT":["AAACAG",1],"TCTTAA":["AAGATT",1],"TCTTAC":["AAGAGT",1],"TCTTAG":["AAGACT",1],"TCTTAT":["AAGAAT",1],"TCTTCA":["AAGATG",1],"TCTTCC":["AAGAGG",1],"TCTTCG":["AAGACG",1],"TCTTGA":["AAGATC",1],"TCTTGC":["AAGAGC",1],"TCTTGG":["AAGACC",1],"TCTTGT":["AACAAG",1],"TCTTTA":["AAAGAT",1],"TCTTTC":["AAAGAG",1],"TCTTTG":["AAAGAC",1],"TCTTTT":["AAAAAG",1],"TGAAAA":["AAAATG",0],"TGAAAC":["AAACTG",0],"TGAAAG":["AAAGTG",0],"TGAAAT":["AAATTG",0],"TGAACA":["AACATG",0],"TGAACC":["AACCTG",0],"TGAACG":["AACGTG",0],"TGAACT":["AACTTG",0],"TGAAGA":["AAGATG",0],"TGAAGC":["AAGCTG",0],"TGAAGG":["AAGGTG",0],"TGAAGT":["AACTTC",1],"TGAATA":["AATATG",0],"TGAATC":["AATCTG",0],"TGAATG":["AATGTG",0],"TGAATT":["AAATTC",1],"TGACAA":["AATGAC",0],"TGACAC":["ACACTG",0],"TGACAG":["ACAGTG",0],"TGACAT":["AATGTC",1],"TGACCA":["ACCATG",0],"TGACCC":["ACCCTG",0],"TGACCG":["ACCGTG",0],"TGACCT":["AAGGTC",1],"TGACGA":["ACGATG",0],"TGACGC":["ACGCTG",0],"TGACGG":["ACCGTC",1],"TGACGT":["AACGTC",1],"TGACTA":["ACTATG",0],"TGACTC":["ACTCTG",0],"TGACTG":["ACAGTC",1],"TGACTT":["AAAGTC",1],"TGAGAA":["AATGAG",0],"TGAGAC":["ACTGAG",0],"TGAGAG":["ACTCTC",1],"TGAGAT":["AATCTC",1],"TGAGCA":["AGCATG",0],"TGAGCC":["AGCCTG",0],"TGAGCG":["ACGCTC",1],"TGAGCT":["AAGCTC",1],"TGAGGA":["AGGATG",0],"TGAGGC":["AGCCTC",1],"TGAGGG":["ACCCTC",1],"TGAGGT":["AACCTC",1],"TGAGTA":["ACTCAT",1],"TGAGTC":["ACTCAG",1],"TGAGTG":["ACACTC",1],"TGAGTT":["AAACTC",1],"TGATAA":["AATGAT",0],"TGATAC":["ACTGAT",0],"TGATAG":["ACTATC",1],"TGATAT":["AATATC",1],"TGATCA":["ATCATG",0],"TGATCC":["AGGATC",1],"TGATCG":["ACGATC",1],"TGATCT":["AAGATC",1],"TGATGC":["AGCATC",1],"TGATGG":["ACCATC",1],"TGATGT":["AACATC",1],"TGATTA":["AATCAT",1],"TGATTC":["AATCAG",1],"TGATTG":["AATCAC",1],"TGATTT":["AAAATC",1],"TGCAAA":["AAATGC",0],"TGCAAC":["AACTGC",0],"TGCAAG":["AAGTGC",0],"TGCAAT":["AATTGC",0],"TGCACA":["ACATGC",0],"TGCACC":["ACCTGC",0],"TGCACG":["ACGTGC",0],"TGCACT":["AAGTGC",1],"TGCAGA":["AGATGC",0],"TGCAGC":["AGCTGC",0],"TGCAGG":["ACCTGC",1],"TGCAGT":["AACTGC",1],"TGCATA":["ATATGC",0],"TGCATC":["AGATGC",1],"TGCATG":["ACATGC",1],"TGCATT":["AAATGC",1],"TGCCAA":["AATGCC",0],"TGCCAC":["ACTGCC",0],"TGCCAG":["ACTGGC",1],"TGCCAT":["AATGGC",1],"TGCCCA":["ATGCCC",0],"TGCCCC":["AGGGGC",1],"TGCCCG":["ACGGGC",1],"TGCCCT":["AAGGGC",1],"TGCCGA":["ATCGGC",1],"TGCCGC":["AGCGGC",1],"TGCCGG":["ACCGGC",1],"TGCCGT":["AACGGC",1],"TGCCTA":["AGGCAT",1],"TGCCTC":["AGAGGC",1],"TGCCTG":["ACAGGC",1],"TGCCTT":["AAAGGC",1],"TGCGAA":["AATGCG",0],"TGCGAC":["ACTGCG",0],"TGCGAG":["ACTCGC",1],"TGCGAT":["AATCGC",1],"TGCGCA":["ATGCGC",0],"TGCGCC":["AGGCGC",1],"TGCGCG":["ACGCGC",1],"TGCGCT":["AAGCGC",1],"TGCGGA":["ATCCGC",1],"TGCGGC":["AGCCGC",1],"TGCGGG":["ACCCGC",1],"TGCGGT":["AACCGC",1],"TGCGTA":["ACGCAT",1],"TGCGTC":["ACGCAG",1],"TGCGTG":["ACACGC",1],"TGCGTT":["AAACGC",1],"TGCTAA":["AATGCT",0],"TGCTAC":["ACTGCT",0],"TGCTAG":["ACTAGC",1],"TGCTAT":["AATAGC",1],"TGCTCA":["AGCATG",1],"TGCTCC":["AGCAGG",1],"TGCTCG":["ACGAGC",1],"TGCTCT":["AAGAGC",1],"TGCTGA":["AGCATC",1],"TGCTGG":["ACCAGC",1],"TGCTGT":["AACAGC",1],"TGCTTA":["AAGCAT",1],"TGCTTC":["AAGCAG",1],"TGCTTG":["AAGCAC",1],"TGCTTT":["AAAAGC",1],"TGGAAA":["AAATGG",0],"TGGAAC":["AACTGG",0],"TGGAAG":["AAGTGG",0],"TGGAAT":["AATTCC",1],"TGGACA":["ACATGG",0],"TGGACC":["ACCTGG",0],"TGGACG":["ACGTCC",1],"TGGACT":["AAGTCC",1],"TGGAGA":["AGATGG",0],"TGGAGC":["AGCTCC",1],"TGGAGG":["ACCTCC",1],"TGGAGT":["AACTCC",1],"TGGATA":["ATATCC",1],"TGGATC":["AGATCC",1],"TGGATG":["ACATCC",1],"TGGATT":["AAATCC",1],"TGGCAA":["AATGGC",0],"TGGCAC":["ACTGGC",0],"TGGCAG":["ACTGCC",1],"TGGCAT":["AATGCC",1],"TGGCCA":["ATGGCC",0],"TGGCCC":["AGGGCC",1],"TGGCCG":["ACGGCC",1],"TGGCCT":["AAGGCC",1],"TGGCGA":["ATCGCC",1],"TGGCGC":["AGCGCC",1],"TGGCGG":["ACCGCC",1],"TGGCGT":["AACGCC",1],"TGGCTA":["AGCCAT",1],"TGGCTC":["AGAGCC",1],"TGGCTG":["ACAGCC",1],"TGGCTT":["AAAGCC",1],"TGGGAA":["AATGGG",0],"TGGGAC":["ACTGGG",0],"TGGGAG":["ACTCCC",1],"TGGGAT":["AATCCC",1],"TGGGCA":["ATGCCC",1],"TGGGCC":["AGGCCC",1],"TGGGCG":["ACGCCC",1],"TGGGCT":["AAGCCC",1],"TGGGGA":["ATCCCC",1],"TGGGGC":["AGCCCC",1],"TGGGGG":["ACCCCC",1],"TGGGGT":["AACCCC",1],"TGGGTA":["ACCCAT",1],"TGGGTC":["ACCCAG",1],"TGGGTG":["ACACCC",1],"TGGGTT":["AAACCC",1],"TGGTAA":["AATGGT",0],"TGGTAC":["ACCAGT",1],"TGGTAG":["ACCACT",1],"TGGTAT":["AATACC",1],"TGGTCA":["ACCATG",1],"TGGTCC":["ACCAGG",1],"TGGTCG":["ACCACG",1],"TGGTCT":["AAGACC",1],"TGGTGA":["ACCATC",1],"TGGTGC":["ACCAGC",1],"TGGTGT":["AACACC",1],"TGGTTA":["AACCAT",1],"TGGTTC":["AACCAG",1],"TGGTTG":["AACCAC",1],"TGGTTT":["AAAACC",1],"TGTAAA":["AAATGT",0],"TGTAAC":["AACTGT",0],"TGTAAG":["AAGTGT",0],"TGTAAT":["AATTAC",1],"TGTACA":["ACATGT",0],"TGTACC":["ACAGGT",1],"TGTACG":["ACACGT",1],"TGTACT":["AAGTAC",1],"TGTAGA":["ACATCT",1],"TGTAGC":["ACAGCT",1],"TGTAGG":["ACACCT",1],"TGTAGT":["AACTAC",1],"TGTATA":["ACATAT",1],"TGTATC":["ACAGAT",1],"TGTATG":["ACACAT",1],"TGTATT":["AAATAC",1],"TGTCAA":["AATGTC",0],"TGTCAC":["ACAGTG",1],"TGTCAG":["ACACTG",1],"TGTCAT":["AATGAC",1],"TGTCCA":["ACATGG",1],"TGTCCC":["ACAGGG",1],"TGTCCG":["ACACGG",1],"TGTCCT":["AAGGAC",1],"TGTCGA":["ACATCG",1],"TGTCGC":["ACAGCG",1],"TGTCGG":["ACACCG",1],"TGTCGT":["AACGAC",1],"TGTCTA":["ACATAG",1],"TGTCTC":["ACAGAG",1],"TGTCTG":["ACACAG",1],"TGTCTT":["AAAGAC",1],"TGTGAA":["AATGTG",0],"TGTGAC":["ACAGTC",1],"TGTGAG":["ACACTC",1],"TGTGAT":["AATCAC",1],"TGTGCA":["ACATGC",1],"TGTGCC":["ACAGGC",1],"TGTGCG":["ACACGC",1],"TGTGCT":["AAGCAC",1],"TGTGGA":["ACATCC",1],"TGTGGC":["ACAGCC",1],"TGTGGG":["ACACCC",1],"TGTGGT":["AACCAC",1],"TGTGTA":["ACACAT",1],"TGTGTC":["ACACAG",1],"TGTGTT":["AAACAC",1],"TGTTAA":["AACATT",1],"TGTTAC":["AACAGT",1],"TGTTAG":["AACACT",1],"TGTTAT":["AACAAT",1],"TGTTCA":["AACATG",1],"TGTTCC":["AACAGG",1],"TGTTCG":["AACACG",1],"TGTTCT":["AACAAG",1],"TGTTGA":["AACATC",1],"TGTTGC":["AACAGC",1],"TGTTGG":["AACACC",1],"TGTTTA":["AAACAT",1],"TGTTTC":["AAACAG",1],"TGTTTG":["AAACAC",1],"TGTTTT":["AAAAAC",1],"TTAAAA":["AAAATT",0],"TTAAAC":["AAACTT",0],"TTAAAG":["AAAGTT",0],"TTAAAT":["AAATTT",0],"TTAACA":["AACATT",0],"TTAACC":["AACCTT",0],"TTAACG":["AACGTT",0],"TTAACT":["AAAGTT",1],"TTAAGA":["AAGATT",0],"TTAAGC":["AAGCTT",0],"TTAAGG":["AACCTT",1],"TTAAGT":["AAACTT",1],"TTAATA":["AATATT",0],"TTAATC":["AAGATT",1],"TTAATG":["AACATT",1],"TTAATT":["AAAATT",1],"TTACAA":["AATTAC",0],"TTACAC":["AAGTGT",1],"TTACAG":["AACTGT",1],"TTACAT":["AAATGT",1],"TTACCA":["AATGGT",1],"TTACCC":["AAGGGT",1],"TTACCG":["AACGGT",1],"TTACCT":["AAAGGT",1],"TTACGA":["AATCGT",1],"TTACGC":["AAGCGT",1],"TTACGG":["AACCGT",1],"TTACGT":["AAACGT",1],"TTACTA":["AATAGT",1],"TTACTC":["AAGAGT",1],"TTACTG":["AACAGT",1],"TTACTT":["AAAAGT",1],"TTAGAA":["AATTAG",0],"TTAGAC":["AAGTCT",1],"TTAGAG":["AACTCT",1],"TTAGAT":["AAATCT",1],"TTAGCA":["AATGCT",1],"TTAGCC":["AAGGCT",1],"TTAGCG":["AACGCT",1],"TTAGCT":["AAAGCT",1],"TTAGGA":["AATCCT",1],"TTAGGC":["AAGCCT",1],"TTAGGG":["AACCCT",1],"TTAGGT":["AAACCT",1],"TTAGTA":["AATACT",1],"TTAGTC":["AAGACT",1],"TTAGTG":["AACACT",1],"TTAGTT":["AAAACT",1],"TTATAA":["AATTAT",0],"TTATAC":["AAGTAT",1],"TTATAG":["AACTAT",1],"TTATAT":["AAATAT",1],"TTATCA":["AATGAT",1],"TTATCC":["AAGGAT",1],"TTATCG":["AACGAT",1],"TTATCT":["AAAGAT",1],"TTATGA":["AATCAT",1],"TTATGC":["AAGCAT",1],"TTATGG":["AACCAT",1],"TTATGT":["AAACAT",1],"TTATTC":["AAGAAT",1],"TTATTG":["AACAAT",1],"TTATTT":["AAAAAT",1],"TTCAAA":["AAATTC",0],"TTCAAC":["AACTTC",0],"TTCAAG":["AACTTG",1],"TTCAAT":["AAATTG",1],"TTCACA":["AATGTG",1],"TTCACC":["AAGGTG",1],"TTCACG":["AACGTG",1],"TTCACT":["AAAGTG",1],"TTCAGA":["AATCTG",1],"TTCAGC":["AAGCTG",1],"TTCAGG":["AACCTG",1],"TTCAGT":["AAACTG",1],"TTCATA":["AATATG",1],"TTCATC":["AAGATG",1],"TTCATG":["AACATG",1],"TTCATT":["AAAATG",1],"TTCCAA":["AATTCC",0],"TTCCAC":["AAGTGG",1],"TTCCAG":["AACTGG",1],"TTCCAT":["AAATGG",1],"TTCCCA":["AATGGG",1],"TTCCCC":["AAGGGG",1],"TTCCCG":["AACGGG",1],"TTCCCT":["AAAGGG",1],"TTCCGA":["AATCGG",1],"TTCCGC":["AAGCGG",1],"TTCCGG":["AACCGG",1],"TTCCGT":["AAACGG",1],"TTCCTA":["AATAGG",1],"TTCCTC":["AAGAGG",1],"TTCCTG":["AACAGG",1],"TTCCTT":["AAAAGG",1],"TTCGAA":["AATTCG",0],"TTCGAC":["AAGTCG",1],"TTCGAG":["AACTCG",1],"TTCGAT":["AAATCG",1],"TTCGCA":["AATGCG",1],"TTCGCC":["AAGGCG",1],"TTCGCG":["AACGCG",1],"TTCGCT":["AAAGCG",1],"TTCGGA":["AATCCG",1],"TTCGGC":["AAGCCG",1],"TTCGGG":["AACCCG",1],"TTCGGT":["AAACCG",1],"TTCGTA":["AATACG",1],"TTCGTC":["AAGACG",1],"TTCGTG":["AACACG",1],"TTCGTT":["AAAACG",1],"TTCTAA":["AATTAG",1],"TTCTAC":["AAGTAG",1],"TTCTAG":["AACTAG",1],"TTCTAT":["AAATAG",1],"TTCTCA":["AATGAG",1],"TTCTCC":["AAGGAG",1],"TTCTCG":["AACGAG",1],"TTCTCT":["AAAGAG",1],"TTCTGA":["AATCAG",1],"TTCTGC":["AAGCAG",1],"TTCTGG":["AACCAG",1],"TTCTGT":["AAACAG",1],"TTCTTA":["AAGAAT",1],"TTCTTG":["AACAAG",1],"TTCTTT":["AAAAAG",1],"TTGAAA":["AAATTG",0],"TTGAAC":["AACTTG",0],"TTGAAG":["AACTTC",1],"TTGAAT":["AAATTC",1],"TTGACA":["AATGTC",1],"TTGACC":["AAGGTC",1],"TTGACG":["AACGTC",1],"TTGACT":["AAAGTC",1],"TTGAGA":["AATCTC",1],"TTGAGC":["AAGCTC",1],"TTGAGG":["AACCTC",1],"TTGAGT":["AAACTC",1],"TTGATA":["AATATC",1],"TTGATC":["AAGATC",1],"TTGATG":["AACATC",1],"TTGATT":["AAAATC",1],"TTGCAA":["AATTGC",0],"TTGCAC":["AAGTGC",1],"TTGCAG":["AACTGC",1],"TTGCAT":["AAATGC",1],"TTGCCA":["AATGGC",1],"TTGCCC":["AAGGGC",1],"TTGCCG":["AACGGC",1],"TTGCCT":["AAAGGC",1],"TTGCGA":["AATCGC",1],"TTGCGC":["AAGCGC",1],"TTGCGG":["AACCGC",1],"TTGCGT":["AAACGC",1],"TTGCTA":["AATAGC",1],"TTGCTC":["AAGAGC",1],"TTGCTG":["AACAGC",1],"TTGCTT":["AAAAGC",1],"TTGGAA":["AATTCC",1],"TTGGAC":["AAGTCC",1],"TTGGAG":["AACTCC",1],"TTGGAT":["AAATCC",1],"TTGGCA":["AATGCC",1],"TTGGCC":["AAGGCC",1],"TTGGCG":["AACGCC",1],"TTGGCT":["AAAGCC",1],"TTGGGA":["AATCCC",1],"TTGGGC":["AAGCCC",1],"TTGGGG":["AACCCC",1],"TTGGGT":["AAACCC",1],"TTGGTA":["AATACC",1],"TTGGTC":["AAGACC",1],"TTGGTG":["AACACC",1],"TTGGTT":["AAAACC",1],"TTGTAA":["AATTAC",1],"TTGTAC":["AAGTAC",1],"TTGTAG":["AACTAC",1],"TTGTAT":["AAATAC",1],"TTGTCA":["AATGAC",1],"TTGTCC":["AAGGAC",1],"TTGTCG":["AACGAC",1],"TTGTCT":["AAAGAC",1],"TTGTGA":["AATCAC",1],"TTGTGC":["AAGCAC",1],"TTGTGG":["AACCAC",1],"TTGTGT":["AAACAC",1],"TTGTTA":["AACAAT",1],"TTGTTC":["AACAAG",1],"TTGTTT":["AAAAAC",1],"TTTAAA":["AAATTT",0],"TTTAAC":["AAAGTT",1],"TTTAAG":["AAACTT",1],"TTTAAT":["AAAATT",1],"TTTACA":["AAATGT",1],"TTTACC":["AAAGGT",1],"TTTACG":["AAACGT",1],"TTTACT":["AAAAGT",1],"TTTAGA":["AAATCT",1],"TTTAGC":["AAAGCT",1],"TTTAGG":["AAACCT",1],"TTTAGT":["AAAACT",1],"TTTATA":["AAATAT",1],"TTTATC":["AAAGAT",1],"TTTATG":["AAACAT",1],"TTTATT":["AAAAAT",1],"TTTCAA":["AAATTG",1],"TTTCAC":["AAAGTG",1],"TTTCAG":["AAACTG",1],"TTTCAT":["AAAATG",1],"TTTCCA":["AAATGG",1],"TTTCCC":["AAAGGG",1],"TTTCCG":["AAACGG",1],"TTTCCT":["AAAAGG",1],"TTTCGA":["AAATCG",1],"TTTCGC":["AAAGCG",1],"TTTCGG":["AAACCG",1],"TTTCGT":["AAAACG",1],"TTTCTA":["AAATAG",1],"TTTCTC":["AAAGAG",1],"TTTCTG":["AAACAG",1],"TTTCTT":["AAAAAG",1],"TTTGAA":["AAATTC",1],"TTTGAC":["AAAGTC",1],"TTTGAG":["AAACTC",1],"TTTGAT":["AAAATC",1],"TTTGCA":["AAATGC",1],"TTTGCC":["AAAGGC",1],"TTTGCG":["AAACGC",1],"TTTGCT":["AAAAGC",1],"TTTGGA":["AAATCC",1],"TTTGGC":["AAAGCC",1],"TTTGGG":["AAACCC",1],"TTTGGT":["AAAACC",1],"TTTGTA":["AAATAC",1],"TTTGTC":["AAAGAC",1],"TTTGTG":["AAACAC",1],"TTTGTT":["AAAAAC",1],"TTTTAA":["AAAATT",1],"TTTTAC":["AAAAGT",1],"TTTTAG":["AAAACT",1],"TTTTAT":["AAAAAT",1],"TTTTCA":["AAAATG",1],"TTTTCC":["AAAAGG",1],"TTTTCG":["AAAACG",1],"TTTTCT":["AAAAAG",1],"TTTTGA":["AAAATC",1],"TTTTGC":["AAAAGC",1],"TTTTGG":["AAAACC",1],"TTTTGT":["AAAAAC",1],"TTTTTA":["AAAAAT",1],"TTTTTC":["AAAAAG",1],"TTTTTG":["AAAAAC",1]};
+
+const motifToCanonical  = {};  // motif  → {canonical, isRc}
+const canonicalToVariants = {}; // canonical → [variant, ...]
+
+function loadLookup() {
+  for (const [motif, [canonical, isRcInt]] of Object.entries(_RAW)) {
+    const isRc = isRcInt === 1;
+    motifToCanonical[motif] = {canonical, isRc};
+    (canonicalToVariants[canonical] ??= []).push(motif);
+  }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+/** Convert HSL (h 0–360, s 0–100, l 0–100) to a hex color string. */
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+  };
+  const hex = x => Math.round(x * 255).toString(16).padStart(2, '0');
+  return `#${hex(f(0))}${hex(f(8))}${hex(f(4))}`;
+}
+
+/**
+ * Build a {canonical → hexColor} map.
+ * Hues are evenly spaced across the full wheel based on the number of
+ * distinct motifs present, so contrast between colors is always maximised.
+ */
+function assignColors(stretches) {
+  const canonicals = [...new Set(stretches.map(s => s.canonical))].sort();
+  const n = canonicals.length;
+  const map = {};
+  canonicals.forEach((c, i) => {
+    // Start at 25° (warm gold) and space evenly; s=65 l=78 gives clear pastels.
+    map[c] = hslToHex((25 + i * 360 / n) % 360, 65, 78);
+  });
+  return map;
+}
+
+/** Parse a hex color and return an rgba() string at the given alpha. */
+function hexToRgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Average two hex colors channel-by-channel. */
+function mixColors(hex1, hex2) {
+  const r = Math.round((parseInt(hex1.slice(1,3),16) + parseInt(hex2.slice(1,3),16)) / 2);
+  const g = Math.round((parseInt(hex1.slice(3,5),16) + parseInt(hex2.slice(3,5),16)) / 2);
+  const b = Math.round((parseInt(hex1.slice(5,7),16) + parseInt(hex2.slice(5,7),16)) / 2);
+  return `rgb(${r},${g},${b})`;
+}
+
+/** Truncate a sequence string for tooltip display (adds … if over max). */
+function truncSeq(s, max = 42) {
+  return s.length > max ? s.slice(0, max) + '…' : s;
+}
+
+/**
+ * Build a <span class="tip"> from an array of {label, value} rows.
+ * Each row renders as a small grey label followed by the value on the
+ * same line (or the next, since tip-label is display:block).
+ */
+function makeTip(rows) {
+  return '<span class="tip">' +
+    rows.map(({label, value}) =>
+      `<span class="tip-label">${label}</span>${value}`
+    ).join('') +
+    '</span>';
+}
+
+/** Wrap a count string in an HTML subscript tag (e.g. '3.1' → '<sub>3.1</sub>'). */
+function toSub(n) {
+  return `<sub>${n}</sub>`;
+}
+
+/**
+ * Return r such that variant === ref[r:] + ref[:r].
+ * Returns 0 when variant === ref. Always ≥ 0 for valid TSV entries.
+ */
+function rotationOffset(variant, ref) {
+  if (variant === ref) return 0;
+  return (ref + ref).indexOf(variant);
+}
+
+/** Reverse-complement a DNA string. */
+function rcSeq(seq) {
+  return seq.split('').reverse().map(b => COMPLEMENT[b]).join('');
+}
+
+// ── Core algorithm ────────────────────────────────────────────────────────────
+
+/**
+ * Format the bracket label for a stretch.
+ * Examples: '[AAG>1]₃.₁', '[~AAG>2]₄', '[AAG]₃'
+ */
+function formatStretchLabel(canonical, isRc, r, repeats, partialLen) {
+  const base     = isRc ? '~' + canonical : canonical;
+  const rotation = r > 0 ? `>${r}` : '';
+  const count    = partialLen > 0 ? `${repeats}.${partialLen}` : String(repeats);
+  return `[${base}${rotation}]${toSub(count)}`;
+}
+
+/**
+ * Find all STR stretches in seq, choosing the rotation with the most complete
+ * repeats. Suffix partial bases are recorded in partialLen. No prefix-partial
+ * normalisation; matches always start on a full repeat boundary.
+ * When stretches of the same canonical overlap, only the first (best) is kept.
+ */
+function findStretches(seq, minRepeats) {
+  const seen = {};  // "rawStart,rawEnd" → best entry
+
+  for (const [canonical, variants] of Object.entries(canonicalToVariants)) {
+    const k = canonical.length;
+    const minCount = Math.max(MIN_LEN[k], minRepeats);
+
+    for (const variant of variants) {
+      if (!seq.includes(variant.repeat(minCount))) continue;
+
+      const isRc = motifToCanonical[variant].isRc;
+
+      for (const match of seq.matchAll(new RegExp(`(?:${variant}){${minCount},}`, 'g'))) {
+        const rawStart = match.index;
+        const rawEnd   = rawStart + match[0].length;
+        const repeats  = match[0].length / k;  // always integer (regex ensures it)
+
+        // Suffix partial: longest leading fragment of variant after last full repeat.
+        let partialLen = 0;
+        for (let plen = k - 1; plen > 0; plen--) {
+          if (rawEnd + plen <= seq.length && seq.slice(rawEnd, rawEnd + plen) === variant.slice(0, plen)) {
+            partialLen = plen;
+            break;
+          }
+        }
+
+        // Rotation offset r: rotate canonical r left to obtain the forward variant;
+        // for RC variants rotate canonical r left then take RC.
+        const fwd = isRc ? rcSeq(variant) : variant;
+        const r   = rotationOffset(fwd, canonical);
+
+        const key = `${rawStart},${rawEnd}`;
+        const coverage = repeats * k + partialLen;
+        const old = seen[key];
+        if (!old || repeats > old.repeats || (repeats === old.repeats && coverage > old.repeats * old.k + old.partialLen)) {
+          seen[key] = {start: rawStart, end: rawEnd, variant, canonical, isRc, r, k, repeats, partialLen};
+        }
+      }
+    }
+  }
+
+  // Sort: earliest start, then most repeats, then most total coverage.
+  const all = Object.values(seen).sort((a, b) =>
+    a.start - b.start || b.repeats - a.repeats ||
+    (b.repeats * b.k + b.partialLen) - (a.repeats * a.k + a.partialLen)
+  );
+
+  // For each canonical, keep only the first (best) stretch per overlapping region.
+  const filtered = [];
+  for (const s of all) {
+    if (filtered.some(f => f.canonical === s.canonical && f.start < s.end && s.start < f.end))
+      continue;
+    filtered.push(s);
+  }
+  return filtered;
+}
+
+/**
+ * Build the bracket nomenclature string and visual alignment segments.
+ *
+ * Returns {nomenclature, segments} where each segment has: start, seq, label.
+ *
+ * hideN       – suppress all [N]n gap markers.
+ * fullSeqGaps – show actual bases in (parentheses) instead of [N]n.
+ * stripEndsN  – suppress only the leading and trailing [N]n markers.
+ */
+function buildNomenclature(seq, stretches, hideN, fullSeqGaps, stripEndsN, colorMap) {
+  let cursor = 0;
+  const result   = [];
+  const segments = [];
+  let isFirst = true;
+
+  for (const s of stretches) {
+    if (s.end <= cursor) continue;
+
+    const gap = s.start - cursor;
+    if (gap > 0) {
+      if (!hideN && !(stripEndsN && isFirst)) {
+        const gapSeq = seq.slice(cursor, s.start);
+        if (fullSeqGaps) {
+          result.push(
+            `<span class="has-tip">(${gapSeq})${makeTip([
+              {label: 'Gap', value: `${gap} bp non-repetitive`},
+            ])}</span>`
+          );
+        } else {
+          result.push(
+            `<span class="has-tip">[N]${toSub(gap)}${makeTip([
+              {label: 'Gap sequence', value: truncSeq(gapSeq)},
+              {label: 'Length',       value: `${gap} bp`},
+            ])}</span>`
+          );
+        }
+      }
+    } else if (gap < 0) {
+      const overlapSeq = seq.slice(s.start, cursor);
+      result.push(
+        `<span class="has-tip">[N]${toSub(gap)}${makeTip([
+          {label: 'Overlap',          value: `${-gap} bp shared with previous stretch`},
+          {label: 'Shared sequence',  value: truncSeq(overlapSeq)},
+        ])}</span>`
+      );
+    }
+
+    isFirst = false;
+    const visSeq   = s.variant.repeat(s.repeats) + s.variant.slice(0, s.partialLen);
+    const totalBp  = visSeq.length;
+    const label    = formatStretchLabel(s.canonical, s.isRc, s.r, s.repeats, s.partialLen);
+    const color    = colorMap[s.canonical];
+
+    const tipRows = [
+      {label: 'Sequence',    value: truncSeq(visSeq)},
+      {label: 'Repeat unit', value: s.variant},
+      {label: 'Length',      value: s.partialLen > 0
+        ? `${s.repeats} × ${s.k} bp + ${s.partialLen} bp partial = ${totalBp} bp`
+        : `${s.repeats} × ${s.k} bp = ${totalBp} bp`},
+    ];
+    if (s.isRc || s.r > 0) {
+      const desc = [s.isRc ? 'RC' : null, s.r > 0 ? `rotated ${s.r}` : null]
+        .filter(Boolean).join(', ');
+      tipRows.push({label: 'Canonical', value: `${s.canonical}  (${desc})`});
+    }
+    result.push(
+      `<span class="stretch has-tip" style="background:${hexToRgba(color, 0.4)}">${label}${makeTip(tipRows)}</span>`
+    );
+
+    const base     = s.isRc ? '~' + s.canonical : s.canonical;
+    const rotation = s.r > 0 ? `>${s.r}` : '';
+    const countStr = s.partialLen > 0 ? `${s.repeats}.${s.partialLen}` : String(s.repeats);
+    segments.push({start: s.start, seq: visSeq, label: `[${base}${rotation}]×${countStr}`, canonical: s.canonical});
+    cursor = s.end + s.partialLen;
+  }
+
+  if (cursor < seq.length) {
+    if (!hideN && !stripEndsN) {
+      const tailSeq = seq.slice(cursor);
+      const tailLen = tailSeq.length;
+      if (fullSeqGaps) {
+        result.push(
+          `<span class="has-tip">(${tailSeq})${makeTip([
+            {label: 'Gap', value: `${tailLen} bp non-repetitive`},
+          ])}</span>`
+        );
+      } else {
+        result.push(
+          `<span class="has-tip">[N]${toSub(tailLen)}${makeTip([
+            {label: 'Gap sequence', value: truncSeq(tailSeq)},
+            {label: 'Length',       value: `${tailLen} bp`},
+          ])}</span>`
+        );
+      }
+    }
+  }
+
+  return {nomenclature: result.join(''), segments};
+}
+
+/**
+ * Render segments as a monospace alignment block with color.
+ * Full sequence on line 1 with each base colored by whichever stretch(es)
+ * cover it (mixed color when two stretches overlap at that position).
+ * Each stretch also gets its own indented line with the sequence and label
+ * colored in its motif color.
+ */
+function buildVisual(seq, segments, colorMap) {
+  if (!segments.length) return seq;
+  const col = Math.max(
+    Math.max(...segments.map(s => s.start + s.seq.length)),
+    seq.length
+  ) + 2;
+
+  // Build a per-base color array for the top sequence line.
+  // Each cell holds the hex color of the covering stretch, or null.
+  // When two stretches cover the same base, mix their colors.
+  const baseColors = new Array(seq.length).fill(null);
+  for (const seg of segments) {
+    const color = colorMap[seg.canonical];
+    for (let i = seg.start; i < seg.start + seg.seq.length && i < seq.length; i++) {
+      baseColors[i] = baseColors[i] === null ? color : mixColors(baseColors[i], color);
+    }
+  }
+
+  // Render the top sequence line as runs of identically-colored characters.
+  let seqHtml = '';
+  let runStart = 0;
+  while (runStart < seq.length) {
+    const runColor = baseColors[runStart];
+    let runEnd = runStart + 1;
+    while (runEnd < seq.length && baseColors[runEnd] === runColor) runEnd++;
+    const text = seq.slice(runStart, runEnd);
+    seqHtml += runColor
+      ? `<span class="stretch" style="background:${runColor}">${text}</span>`
+      : text;
+    runStart = runEnd;
+  }
+
+  // Each stretch line: colored sequence + right-aligned colored label.
+  const stretchLines = [];
+  for (const seg of segments) {
+    const color = colorMap[seg.canonical];
+    const indent = ' '.repeat(seg.start);
+    const gap    = ' '.repeat(col - seg.start - seg.seq.length);
+    stretchLines.push(
+      indent +
+      `<span class="stretch" style="background:${color}">${seg.seq}</span>` +
+      gap +
+      `<span class="stretch" style="background:${hexToRgba(color, 0.5)}">${seg.label}</span>`
+    );
+  }
+
+  return [seqHtml, ...stretchLines].join('\n');
+}
+
+/**
+ * Expand a bracket nomenclature string back to a plain DNA sequence.
+ * Handles RC motifs (~ prefix), rotation (>r), and partial repeats (.p).
+ * Ignores gap/overlap markers. Input counts must use regular digits.
+ */
+function convertNomenclatureToSequence(nomenclature) {
+  let seq = '';
+  for (const m of nomenclature.matchAll(/\(([ACGTN]+)\)|\[(~?)([ACGTN]+)(?:>(\d+))?\](-?\d+)(?:\.(\d+))?/g)) {
+    if (m[1] !== undefined) { seq += m[1]; continue; }
+    const [, , tilde, canonical, rotStr, countStr, partialStr] = m;
+    const n = parseInt(countStr);
+    if (n < 0 || canonical === 'N') continue;
+    const r       = rotStr ? parseInt(rotStr) : 0;
+    const p       = partialStr ? parseInt(partialStr) : 0;
+    const rotated = canonical.slice(r) + canonical.slice(0, r);
+    const variant = tilde === '~' ? rcSeq(rotated) : rotated;
+    seq += variant.repeat(n) + variant.slice(0, p);
+  }
+  return seq;
+}
+
+// ── Hamming matrix ────────────────────────────────────────────────────────────
+
+function hammingDist(a, b) {
+  let d = 0;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) d++;
+  return d;
+}
+
+/** Minimum Hamming distance between the full equivalence classes of two canonicals. */
+function minHammingBetweenCanonicals(c1, c2) {
+  const v1 = canonicalToVariants[c1] ?? [c1];
+  const v2 = canonicalToVariants[c2] ?? [c2];
+  let min = Infinity;
+  for (const a of v1) for (const b of v2)
+    if (a.length === b.length) min = Math.min(min, hammingDist(a, b));
+  return min === Infinity ? null : min;
+}
+
+/** Interpolate a cell background color for a given distance and motif length k. */
+function hammingCellColor(dist, k) {
+  // d=1 → warm red, d=k → cool blue, linear hue/lightness interpolation
+  const t = k > 1 ? (dist - 1) / (k - 1) : 0;
+  const h = Math.round(10 + t * 200);      // hue: 10 (red-orange) → 210 (blue)
+  const s = Math.round(85 - t * 45);       // saturation: 85% → 40%
+  const l = Math.round(68 + t * 24);       // lightness: 68% → 92%
+  return `hsl(${h},${s}%,${l}%)`;
+}
+
+/**
+ * Build HTML for pairwise minimum Hamming distance matrices.
+ * Canonicals are grouped by k; only groups with ≥2 motifs get a matrix.
+ */
+function buildHammingMatrices(canonicals) {
+  if (canonicals.length < 2) return '';
+
+  // Group by motif length k
+  const byK = {};
+  for (const c of canonicals) (byK[c.length] ??= []).push(c);
+
+  let html = '<div class="matrix-card">';
+  html += '<h2>Pairwise motif distance matrix</h2>';
+  html += '<p class="matrix-note">Minimum Hamming distance between equivalence classes (all rotations and reverse complements). Each cell shows the closest any variant of row-motif can get to any variant of column-motif. Grouped by motif length k.</p>';
+
+  for (const k of Object.keys(byK).map(Number).sort((a, b) => a - b)) {
+    const cs = byK[k].slice().sort();
+    if (cs.length < 2) {
+      html += `<div class="matrix-group"><h3>k = ${k}</h3><p class="matrix-note">Only one motif (${cs[0]}) — no pairwise comparison.</p></div>`;
+      continue;
+    }
+
+    html += `<div class="matrix-group"><h3>k = ${k}</h3><div class="matrix-wrap">`;
+    html += '<table class="hm-table"><thead><tr><th></th>';
+    for (const c of cs) html += `<th>${c}</th>`;
+    html += '</tr></thead><tbody>';
+
+    for (const row of cs) {
+      html += `<tr><th>${row}</th>`;
+      for (const col of cs) {
+        if (row === col) {
+          html += `<td class="hm-cell" style="background:#ebebeb;color:#aaa">—</td>`;
+        } else {
+          const d = minHammingBetweenCanonicals(row, col);
+          const bg = d != null ? hammingCellColor(d, k) : '#f5f5f5';
+          html += `<td class="hm-cell" style="background:${bg}">${d ?? '?'}</td>`;
+        }
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table></div></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
+
+function analyze() {
+  const raw         = document.getElementById('seq-input').value.trim().toUpperCase();
+  const minRepeats  = parseInt(document.getElementById('min-repeats').value) || 3;
+  const hideN       = document.getElementById('hide-n').checked;
+  const fullSeqGaps = document.getElementById('full-seq-gaps').checked;
+  const stripEndsN  = document.getElementById('strip-ends-n').checked;
+  const resultsEl  = document.getElementById('results');
+
+  if (!raw) { resultsEl.innerHTML = ''; document.getElementById('matrix-section').innerHTML = ''; return; }
+
+  const html = [];
+  const allFoundCanonicals = new Set();
+  let resultIndex = 0;
+
+  for (const line of raw.split('\n')) {
+    let seq = line.trim();
+    if (!seq) continue;
+    resultIndex++;
+
+    if (seq.includes('[') || seq.includes(']'))
+      seq = convertNomenclatureToSequence(seq);
+
+    const hasInvalid = [...seq].some(ch => !ACCEPTED.has(ch));
+    seq = seq.split('').filter(ch => ACCEPTED.has(ch)).join('');
+
+    const stretches  = findStretches(seq, minRepeats);
+    stretches.forEach(s => allFoundCanonicals.add(s.canonical));
+    const colorMap   = assignColors(stretches);
+    const {nomenclature, segments} = buildNomenclature(seq, stretches, hideN, fullSeqGaps, stripEndsN, colorMap);
+    const motifChips = [...new Set(stretches.map(s => s.canonical))].sort()
+      .map(c => {
+        const variants  = canonicalToVariants[c] ?? [];
+        const fwdRots   = variants.filter(v => !motifToCanonical[v].isRc);
+        const rcRots    = variants.filter(v =>  motifToCanonical[v].isRc);
+        const tipFwd    = fwdRots.length ? `<span class="tip-label">Rotations</span>${fwdRots.join('  ')}` : '';
+        const tipRc     = rcRots.length  ? `<span class="tip-label">RC rotations</span>${rcRots.join('  ')}` : '';
+        return `<span class="motif-chip has-tip" style="background:${colorMap[c]}">${c}<span class="tip">${tipFwd}${tipRc}</span></span>`;
+      })
+      .join('');
+
+    html.push(`
+      <div class="result-card">
+        <h2>Result ${resultIndex}</h2>
+        ${hasInvalid ? '<div class="notice">Invalid characters were ignored.</div>' : ''}
+        <div class="seq-line">${seq}</div>
+        <div class="nomenclature">${nomenclature || '(no repeats found)'}</div>
+        ${segments.length ? `<pre class="visual">${buildVisual(seq, segments, colorMap)}</pre>` : ''}
+        ${motifChips ? `<div class="unique-motifs">Unique motifs: ${motifChips}</div>` : ''}
+      </div>
+    `);
+  }
+
+  resultsEl.innerHTML = html.join('');
+  document.getElementById('matrix-section').innerHTML =
+    buildHammingMatrices([...allFoundCanonicals].sort());
+}
+
+document.getElementById('run-btn').addEventListener('click', analyze);
+
+// Ctrl/Cmd+Enter submits from the textarea
+document.getElementById('seq-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) analyze();
+});
+
+loadLookup();
+document.getElementById('status').textContent = 'Ready — Ctrl+Enter to run.';
+document.getElementById('run-btn').disabled = false;
+</script>
+</body>
+</html>
