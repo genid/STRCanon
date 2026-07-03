@@ -1,5 +1,7 @@
 # STRCanon
 
+[![Open in browser](https://img.shields.io/badge/Open%20web%20app-4a7ff5?style=for-the-badge&logo=googlechrome&logoColor=white)](https://genid.github.io/STRCanon/)
+
 A simple, unbiased canonical motif based system for short tandem repeat (STR) nomenclature.
 
 Short tandem repeats can be described starting at any rotation of their
@@ -49,8 +51,9 @@ with `--expand` to reconstruct the underlying sequence.
 - **`str_canonical_motifs.tsv`** — precomputed lookup table produced by
   `generate_canonicals.py`, provided for reference and for use in other
   tools/languages.
-- **`index.html`** — a self-contained, in-browser version of the tool: paste
-  in sequences or nomenclature strings and get canonical nomenclature,
+- **`index.html`** — a self-contained, in-browser version of the tool
+  ([live at genid.github.io/STRCanon](https://genid.github.io/STRCanon/)):
+  paste in sequences or nomenclature strings and get canonical nomenclature,
   visual alignments, and pairwise motif distance matrices, with no
   installation required. Open the file directly in a browser.
 
@@ -74,6 +77,8 @@ Options:
 | `--hide-n / --no-hide-n` | suppress all `[N]` gap/overlap markers |
 | `--full-seq-gaps / --no-full-seq-gaps` | show literal bases in `(parentheses)` instead of `[N]n` (default: on) |
 | `--strip-ends-n / --no-strip-ends-n` | suppress only the leading/trailing gap markers (default: on) |
+| `--trim-front N` | remove N bases from the start of each sequence before analysis |
+| `--trim-end N` | remove N bases from the end of each sequence before analysis |
 | `--visual` | also print a monospace alignment of each stretch |
 | `--matrix` | also print pairwise Hamming distances between motifs found |
 | `--expand` | treat inputs as nomenclature and print the DNA sequence |
