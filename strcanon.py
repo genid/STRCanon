@@ -399,6 +399,13 @@ def main() -> None:
     p.add_argument('--strip-ends-n', action=argparse.BooleanOptionalAction, default=True,
                    help='suppress only the leading/trailing gap markers '
                         '(default: on)')
+
+    adv = p.add_argument_group('advanced')
+    adv.add_argument('--trim-front', type=int, default=0, metavar='N',
+                     help='remove N bases from the start of each sequence before analysis')
+    adv.add_argument('--trim-end', type=int, default=0, metavar='N',
+                     help='remove N bases from the end of each sequence before analysis')
+
     p.add_argument('--visual', action='store_true',
                    help='also print a monospace alignment of each stretch')
     p.add_argument('--matrix', action='store_true',
@@ -425,6 +432,9 @@ def main() -> None:
 
     for idx, line in enumerate(inputs, 1):
         seq, had_invalid = prepare_sequence(line)
+        if args.trim_front or args.trim_end:
+            end = len(seq) - args.trim_end if args.trim_end else len(seq)
+            seq = seq[args.trim_front:max(args.trim_front, end)]
         stretches = find_stretches(seq, args.min_repeats)
         for s in stretches:
             all_canonicals.add(s['canonical'])

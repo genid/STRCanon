@@ -340,6 +340,59 @@
     border-right: 2px solid #ddd;
   }
   .hm-cell { border-radius: 3px; font-weight: 600; }
+
+  /* ── Advanced options collapsible ───────────────────────────────────── */
+  details.advanced-opts { margin-top: .85rem; }
+  details.advanced-opts > summary {
+    font-size: .8rem;
+    font-weight: 600;
+    color: #888;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    user-select: none;
+  }
+  details.advanced-opts > summary::-webkit-details-marker { display: none; }
+  details.advanced-opts > summary::before {
+    content: '▶';
+    font-size: .6rem;
+    transition: transform .15s;
+    color: #aaa;
+  }
+  details.advanced-opts[open] > summary::before { transform: rotate(90deg); }
+  .advanced-opts-body {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: .8rem;
+  }
+
+  /* ── Copy button ─────────────────────────────────────────────────────── */
+  .nom-row {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    margin-bottom: 1rem;
+  }
+  .nom-row .nomenclature { flex: 1; margin-bottom: 0; }
+  .copy-btn {
+    padding: .3rem .75rem;
+    background: #f0f2f5;
+    color: #555;
+    border: 1px solid #d4d4d4;
+    border-radius: 5px;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    margin-top: .15rem;
+    transition: background .12s, color .12s, border-color .12s;
+  }
+  .copy-btn:hover { background: #e2e6ea; }
+  .copy-btn.copied { background: #d4edda; color: #155724; border-color: #c3e6cb; }
 </style>
 </head>
 <body>
@@ -375,6 +428,22 @@
       <button id="run-btn" disabled>Analyze</button>
     </div>
 
+    <details class="advanced-opts">
+      <summary>Advanced options</summary>
+      <div class="advanced-opts-body">
+        <div class="control-group">
+          <span class="field-label">Trim front (bp)</span>
+          <input type="number" id="trim-front" value="0" min="0" step="1"
+                 title="Remove this many bases from the start of each sequence before analysis">
+        </div>
+        <div class="control-group">
+          <span class="field-label">Trim end (bp)</span>
+          <input type="number" id="trim-end" value="0" min="0" step="1"
+                 title="Remove this many bases from the end of each sequence before analysis">
+        </div>
+      </div>
+    </details>
+
     <div id="status">Loading motif database…</div>
   </div>
 
@@ -400,6 +469,7 @@
         <tr><td>Hide N gaps</td><td>Suppress all [N] gap/overlap markers</td></tr>
         <tr><td>Full sequence in gaps</td><td>Show actual bases in (parentheses) instead of [N]<sub>n</sub></td></tr>
         <tr><td>Strip prefix/suffix N</td><td>Suppress only the leading and trailing [N] markers; keep internal ones</td></tr>
+        <tr><td>Trim front / end</td><td>Remove a fixed number of bases from the start/end of each sequence before analysis (under <em>Advanced options</em>)</td></tr>
       </table>
       <div class="legend-section">Examples</div>
       <table>
@@ -852,12 +922,30 @@ function buildHammingMatrices(canonicals) {
 
 // ── UI ────────────────────────────────────────────────────────────────────────
 
+function copyNomenclature(btn) {
+  const card  = btn.closest('.result-card');
+  const el    = card.querySelector('.nomenclature');
+  const clone = el.cloneNode(true);
+  clone.querySelectorAll('.tip').forEach(t => t.remove());
+  const text  = clone.innerText.trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  }).catch(() => {
+    btn.textContent = 'Error';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  });
+}
+
 function analyze() {
   const raw         = document.getElementById('seq-input').value.trim().toUpperCase();
   const minRepeats  = parseInt(document.getElementById('min-repeats').value) || 3;
   const hideN       = document.getElementById('hide-n').checked;
   const fullSeqGaps = document.getElementById('full-seq-gaps').checked;
   const stripEndsN  = document.getElementById('strip-ends-n').checked;
+  const trimFront   = Math.max(0, parseInt(document.getElementById('trim-front').value) || 0);
+  const trimEnd     = Math.max(0, parseInt(document.getElementById('trim-end').value)   || 0);
   const resultsEl  = document.getElementById('results');
 
   if (!raw) { resultsEl.innerHTML = ''; document.getElementById('matrix-section').innerHTML = ''; return; }
@@ -876,6 +964,11 @@ function analyze() {
 
     const hasInvalid = [...seq].some(ch => !ACCEPTED.has(ch));
     seq = seq.split('').filter(ch => ACCEPTED.has(ch)).join('');
+
+    if (trimFront > 0 || trimEnd > 0) {
+      const end = trimEnd > 0 ? Math.max(trimFront, seq.length - trimEnd) : seq.length;
+      seq = seq.slice(trimFront, end);
+    }
 
     const stretches  = findStretches(seq, minRepeats);
     stretches.forEach(s => allFoundCanonicals.add(s.canonical));
@@ -897,7 +990,10 @@ function analyze() {
         <h2>Result ${resultIndex}</h2>
         ${hasInvalid ? '<div class="notice">Invalid characters were ignored.</div>' : ''}
         <div class="seq-line">${seq}</div>
-        <div class="nomenclature">${nomenclature || '(no repeats found)'}</div>
+        <div class="nom-row">
+          <div class="nomenclature">${nomenclature || '(no repeats found)'}</div>
+          <button class="copy-btn" onclick="copyNomenclature(this)" title="Copy nomenclature to clipboard">Copy</button>
+        </div>
         ${segments.length ? `<pre class="visual">${buildVisual(seq, segments, colorMap)}</pre>` : ''}
         ${motifChips ? `<div class="unique-motifs">Unique motifs: ${motifChips}</div>` : ''}
       </div>
