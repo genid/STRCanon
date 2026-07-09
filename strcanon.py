@@ -30,6 +30,10 @@ Counts use plain digits, so any output line can be fed straight back in with
 --expand. Reconstruction is exact when nothing was suppressed on the way out,
 i.e. with --no-strip-ends-n and the default --full-seq-gaps.
 
+Stretches are always called on one strand of the duplex (see canonical_strand),
+so a locus and its reverse complement yield the same motifs, repeat counts and
+partial lengths. --orientation only chooses which strand they are displayed on.
+
 Examples
     strnom.py AAGAAGAAGAGAGAG
     strnom.py TGCAAGAAGAAG --no-strip-ends-n          # keep the leading (TGC)
@@ -43,7 +47,7 @@ import re
 import argparse
 from itertools import product
 
-COMPLEMENT = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C'}
+COMPLEMENT = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'N': 'N'}
 ACCEPTED = set('ACGTN')
 # Minimum number of repeats to call a stretch, per motif length k.
 # Mono-nucleotide runs are only interesting when long, hence 5.
@@ -172,6 +176,62 @@ def find_stretches(seq: str, min_repeats: int) -> list:
             continue
         filtered.append(s)
     return filtered
+
+
+# ── Analysis strand ───────────────────────────────────────────────────────────
+#
+# find_stretches() reads 5'->3': the regex takes the leftmost match and a
+# partial repeat is the leftover on a run's 3' end. Reverse-complementing a
+# sequence moves that leftover to the 5' end, so calling stretches directly on
+# whichever strand happened to be sequenced can place partials differently.
+# TH01 allele 9.3 is the textbook case: its 3-base ATG interruption is absorbed
+# as [AATG]6.1...3.2 on one strand and [~AATG]3.3...6 on the other.
+#
+# So stretches are always called on one strand of the duplex, chosen from the
+# molecule itself rather than from the input: the lexicographically smaller of
+# the sequence and its reverse complement. Both strands of a locus canonicalise
+# to the same string, hence to the same blocks. The results are then mirrored
+# onto whichever strand is being displayed, which changes only the order of the
+# blocks and how each is written (~ and >r) -- never the canonical motif, the
+# repeat count or the partial length.
+
+def canonical_strand(seq: str):
+    """Return (analysis_seq, flipped) for the strand stretches are called on."""
+    rev = reverse_complement(seq)
+    return (seq, False) if seq <= rev else (rev, True)
+
+
+def mirror_stretch(s: dict, n: int) -> dict:
+    """Map a stretch onto the opposite strand of a length-n sequence.
+
+    A run reads `w * r + w[:p]`. Its reverse complement is `u * r + u[:p]`
+    where u = rc(w) rotated left by k - p, so the repeat count and the partial
+    length survive the flip; only the motif's rotation changes.
+    """
+    k, r, p = s['k'], s['repeats'], s['partial_len']
+    rc_w = reverse_complement(s['variant'])
+    u = rc_w[k - p:] + rc_w[:k - p]
+
+    start = n - (s['start'] + r * k + p)
+    canonical, is_rc = MOTIF_TO_CANONICAL[u]
+    fwd = reverse_complement(u) if is_rc else u
+    return {'start': start, 'end': start + r * k, 'variant': u,
+            'canonical': canonical, 'is_rc': is_rc,
+            'r': rotation_offset(fwd, canonical), 'k': k,
+            'repeats': r, 'partial_len': p}
+
+
+def mirror_stretches(stretches: list, n: int) -> list:
+    return sorted((mirror_stretch(s, n) for s in stretches),
+                  key=lambda s: (s['start'], -s['repeats'],
+                                 -(s['repeats'] * s['k'] + s['partial_len'])))
+
+
+def call_stretches(seq: str, min_repeats: int) -> list:
+    """Find stretches on the canonical strand, reported in seq's orientation."""
+    analysis_seq, flipped = canonical_strand(seq)
+    stretches = find_stretches(analysis_seq, min_repeats)
+    return mirror_stretches(stretches, len(seq)) if flipped else stretches
 
 
 # ── Nomenclature rendering ────────────────────────────────────────────────────
@@ -432,6 +492,12 @@ def main() -> None:
     p.add_argument('--strip-ends-n', action=argparse.BooleanOptionalAction, default=True,
                    help='suppress only the leading/trailing gap markers '
                         '(default: on)')
+    p.add_argument('--orientation', choices=('as-given', 'reverse-complement'),
+                   default='as-given',
+                   help='strand to report on. Stretches are always called on the '
+                        'same strand of the duplex, so this changes only the order '
+                        'the motifs are shown in and how each is written, never how '
+                        'they are called (default: as-given)')
 
     adv = p.add_argument_group('advanced')
     adv.add_argument('--trim-front', type=int, default=0, metavar='N',
@@ -468,7 +534,9 @@ def main() -> None:
         if args.trim_front or args.trim_end:
             end = len(seq) - args.trim_end if args.trim_end else len(seq)
             seq = seq[args.trim_front:max(args.trim_front, end)]
-        stretches = find_stretches(seq, args.min_repeats)
+        if args.orientation == 'reverse-complement':
+            seq = reverse_complement(seq)
+        stretches = call_stretches(seq, args.min_repeats)
         for s in stretches:
             all_canonicals.add(s['canonical'])
 

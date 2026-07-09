@@ -20,6 +20,38 @@ representative. Motifs that are themselves a repeat of a shorter unit (e.g.
 `ATAT`, a repeat of `AT`) are excluded, since they aren't valid independent
 motifs at that length.
 
+## Analysis strand
+
+Repeats are detected 5'→3': a stretch is matched left to right, and a partial
+repeat is whatever is left over on the run's 3' end. Reverse-complementing a
+sequence moves that leftover to the 5' end, so calling stretches on whichever
+strand happened to be sequenced would place partial repeats differently. TH01
+allele 9.3 is the textbook case — its 3-base `ATG` interruption gets absorbed
+into the first stretch on one strand and the second on the other.
+
+So stretches are always called on **one strand of the duplex**, picked from the
+molecule rather than from the input: the lexicographically smaller of the
+sequence and its reverse complement. Both strands of a locus canonicalize to
+the same string, so both yield the same blocks. The result is then mirrored
+onto whichever strand is being displayed.
+
+`--orientation` therefore changes only the order the motifs are shown in and
+how each is written (`~` and `>r`) — never the canonical motif, the repeat
+count, or the partial length:
+
+```
+TH01 allele 9.3, plus strand   [AATG]6.1[AATG>2]3.2
+             ... minus strand  [~AATG]3.2[~AATG>1]6.1
+```
+
+Both name the same two blocks — `AATG` × 6 + 1, and `AATG` × 3 + 2 — in
+mirror-image order.
+
+Because the analysis strand is chosen by comparing the whole sequence,
+extending the flanks far enough to flip that comparison can move a partial
+repeat from one end of a run to the other. Trim consistently (`--trim-front` /
+`--trim-end`) when comparing alleles across samples.
+
 ## Nomenclature
 
 ```
@@ -72,8 +104,9 @@ only.
   tools/languages.
 - **`test_strcanon.py`** — test suite (`python -m unittest test_strcanon`).
   Covers canonicalization against the lookup table, rendering of common
-  forensic loci (D21S11, vWA, FGA, TH01, …), strand symmetry, and
-  `expand(render(seq)) == seq` over randomized repeat-dense sequences.
+  forensic loci (D21S11, vWA, FGA, TH01, …), strand symmetry of the calls, and
+  `expand(render(seq)) == seq` on both strands over randomized repeat-dense
+  sequences.
 - **`index.html`** — a self-contained, in-browser version of the tool
   ([live at genid.github.io/STRCanon](https://genid.github.io/STRCanon/)):
   paste in sequences or nomenclature strings and get canonical nomenclature,
@@ -100,6 +133,7 @@ Options:
 | `--hide-n / --no-hide-n` | suppress all `[N]` gap/overlap markers |
 | `--full-seq-gaps / --no-full-seq-gaps` | show literal bases in `(parentheses)` instead of `[N]n` (default: on) |
 | `--strip-ends-n / --no-strip-ends-n` | suppress only the leading/trailing gap markers (default: on) |
+| `--orientation {as-given,reverse-complement}` | strand to report on; affects only display order and how each motif is written, never how it is called (default: as-given) |
 | `--trim-front N` | remove N bases from the start of each sequence before analysis |
 | `--trim-end N` | remove N bases from the end of each sequence before analysis |
 | `--visual` | also print a monospace alignment of each stretch |

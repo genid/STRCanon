@@ -9,8 +9,23 @@ import strcanon as S
 
 def nom(seq, min_repeats=3, hide_n=False, full_seq_gaps=True, strip_ends_n=False):
     """Nomenclature under lossless settings (flanks kept, gaps written out)."""
-    stretches = S.find_stretches(seq, min_repeats)
+    stretches = S.call_stretches(seq, min_repeats)
     return S.build_nomenclature(seq, stretches, hide_n, full_seq_gaps, strip_ends_n)[0]
+
+
+def rendered_blocks(seq, min_repeats=3):
+    """(canonical, repeats, partial) for the blocks build_nomenclature emits.
+
+    find_stretches also returns nested candidates that the cursor in
+    build_nomenclature skips; those never reach the user.
+    """
+    emitted, cursor = [], 0
+    for s in S.call_stretches(seq, min_repeats):
+        if s['end'] <= cursor:
+            continue
+        emitted.append((s['canonical'], s['repeats'], s['partial_len']))
+        cursor = s['end'] + s['partial_len']
+    return emitted
 
 
 # Sequence-based renderings of common forensic loci, built from their published
@@ -96,9 +111,10 @@ class TestRoundTrip(unittest.TestCase):
     """expand(nomenclature(seq)) == seq, under lossless settings."""
 
     def assert_round_trips(self, seq, label=''):
-        rendered = nom(seq)
-        self.assertEqual(S.convert_nomenclature_to_sequence(rendered), seq,
-                         f'{label or seq}: {rendered}')
+        for strand in (seq, S.reverse_complement(seq)):
+            rendered = nom(strand)
+            self.assertEqual(S.convert_nomenclature_to_sequence(rendered), strand,
+                             f'{label or seq}: {rendered}')
 
     def test_readme_example(self):
         self.assert_round_trips('AAGAAGAAGAGAGAG')
@@ -163,9 +179,82 @@ class TestFindStretches(unittest.TestCase):
 
 
 class TestStrandSymmetry(unittest.TestCase):
+    """Stretches are called on one strand of the duplex, so the two strands of a
+    locus get the same blocks in mirror-image order -- never different calls."""
+
+    def assert_mirrored(self, seq, label=''):
+        fwd = rendered_blocks(seq)
+        rev = rendered_blocks(S.reverse_complement(seq))
+        self.assertEqual(fwd, list(reversed(rev)),
+                         f'{label or seq}\n  + {nom(seq)}\n  - {nom(S.reverse_complement(seq))}')
+
+    def test_th01_9_3_names_the_same_blocks_on_either_strand(self):
+        # The 3-base ATG interruption used to be absorbed as 6.1/3.2 on the plus
+        # strand but 3.3/6 on the minus strand.
+        seq = LOCI['TH01 a9.3']
+        self.assertEqual(rendered_blocks(seq), [('AATG', 6, 1), ('AATG', 3, 2)])
+        self.assertEqual(rendered_blocks(S.reverse_complement(seq)),
+                         [('AATG', 3, 2), ('AATG', 6, 1)])
+
+    def test_forensic_loci(self):
+        for label, seq in LOCI.items():
+            with self.subTest(locus=label):
+                self.assert_mirrored(seq, label)
+
+    def test_abutting_runs_of_the_same_motif_class(self):
+        """The case that breaks a left-to-right scan: two phases of one motif."""
+        rng = random.Random(20240105)
+        for _ in range(150):
+            k = rng.randint(2, 4)
+            m = ''.join(rng.choice('ACGT') for _ in range(k))
+            seq = m * rng.randint(3, 6) + (m[1:] + m[0]) * rng.randint(3, 6)
+            self.assert_mirrored(seq)
+
+    def test_interrupted_runs(self):
+        rng = random.Random(20240106)
+        for _ in range(150):
+            m = ''.join(rng.choice('ACGT') for _ in range(rng.randint(2, 6)))
+            gap = ''.join(rng.choice('ACGT') for _ in range(rng.randint(1, 3)))
+            self.assert_mirrored(m * rng.randint(3, 6) + gap + m * rng.randint(3, 6))
+
+    def test_random_sequences(self):
+        rng = random.Random(20240103)
+        for _ in range(200):
+            self.assert_mirrored(''.join(rng.choice('ACGT')
+                                         for _ in range(rng.randint(10, 60))))
+
+    def test_palindromic_sequence_is_its_own_reverse_complement(self):
+        for core in ('AATT', 'ACGT', 'AGCT'):
+            seq = core * 6
+            self.assertEqual(seq, S.reverse_complement(seq))
+            self.assertEqual(nom(seq), f'[{core}]6')
+
+    def test_analysis_strand_is_the_same_for_both_strands(self):
+        rng = random.Random(20240107)
+        for _ in range(100):
+            seq = ''.join(rng.choice('ACGT') for _ in range(rng.randint(6, 40)))
+            self.assertEqual(S.canonical_strand(seq)[0],
+                             S.canonical_strand(S.reverse_complement(seq))[0])
+
+    def test_mirror_stretch_preserves_repeats_and_partial(self):
+        """rc(w*r + w[:p]) == u*r + u[:p] with u = rot(rc(w), k-p)."""
+        rng = random.Random(20240108)
+        for seq in list(LOCI.values()) + [
+                ''.join(rng.choice('ACGT') for _ in range(rng.randint(10, 50)))
+                for _ in range(100)]:
+            n = len(seq)
+            for s in S.call_stretches(seq, 3):
+                m = S.mirror_stretch(s, n)
+                self.assertEqual((m['canonical'], m['repeats'], m['partial_len']),
+                                 (s['canonical'], s['repeats'], s['partial_len']))
+                region = S.reverse_complement(seq)[m['start']:
+                                                   m['start'] + m['repeats'] * m['k']
+                                                   + m['partial_len']]
+                self.assertEqual(region, m['variant'] * m['repeats']
+                                 + m['variant'][:m['partial_len']])
 
     def test_canonical_motifs_are_strand_independent(self):
-        """Reverse-complementing a sequence must not change which motifs are called."""
+        """The raw finder already agrees on *which* motifs occur, on either strand."""
         rng = random.Random(20240103)
         for _ in range(200):
             seq = ''.join(rng.choice('ACGT') for _ in range(rng.randint(10, 60)))
@@ -183,6 +272,9 @@ class TestSequenceHelpers(unittest.TestCase):
 
     def test_prepare_sequence_expands_nomenclature(self):
         self.assertEqual(S.prepare_sequence('[AAG]3')[0], 'AAGAAGAAG')
+
+    def test_reverse_complement_handles_n(self):
+        self.assertEqual(S.reverse_complement('AAGNNAAG'), 'CTTNNCTT')
 
     def test_reverse_complement_is_an_involution(self):
         rng = random.Random(20240104)

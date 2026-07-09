@@ -425,6 +425,12 @@
         <span>Strip prefix/suffix N</span>
       </label>
 
+      <label class="checkbox-row"
+             title="Show the result on the other strand. Motifs, repeat counts and partials are unchanged — only the order they are shown in.">
+        <input type="checkbox" id="reverse-complement">
+        <span>Reverse-complement strand</span>
+      </label>
+
       <button id="run-btn" disabled>Analyze</button>
     </div>
 
@@ -491,7 +497,7 @@
 <script>
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const COMPLEMENT   = {A:'T', T:'A', C:'G', G:'C'};
+const COMPLEMENT   = {A:'T', T:'A', C:'G', G:'C', N:'N'};
 const MIN_LEN      = {1:5, 2:2, 3:2, 4:2, 5:2, 6:2};
 const ACCEPTED     = new Set(['A','C','G','T','N']);
 // ── Lookup tables (embedded from str_canonical_motifs.tsv) ──────────────────
@@ -666,6 +672,60 @@ function findStretches(seq, minRepeats) {
     filtered.push(s);
   }
   return filtered;
+}
+
+// ── Analysis strand ───────────────────────────────────────────────────────────
+//
+// findStretches reads 5'->3': the regex takes the leftmost match and a partial
+// repeat is the leftover on a run's 3' end. Reverse-complementing a sequence
+// moves that leftover to the 5' end, so calling stretches directly on whichever
+// strand happened to be sequenced can place partials differently. TH01 allele
+// 9.3 is the textbook case: its 3-base ATG interruption is absorbed as
+// [AATG]6.1...3.2 on one strand and [~AATG]3.3...6 on the other.
+//
+// So stretches are always called on one strand of the duplex, chosen from the
+// molecule itself rather than from the input: the lexicographically smaller of
+// the sequence and its reverse complement. Both strands of a locus canonicalise
+// to the same string, hence to the same blocks. The results are then mirrored
+// onto whichever strand is displayed, which changes only the order of the blocks
+// and how each is written (~ and >r) -- never the canonical motif, the repeat
+// count or the partial length.
+
+/** Return [analysisSeq, flipped] for the strand stretches are called on. */
+function canonicalStrand(seq) {
+  const rev = rcSeq(seq);
+  return seq <= rev ? [seq, false] : [rev, true];
+}
+
+/**
+ * Map a stretch onto the opposite strand of a length-n sequence.
+ * A run reads w*r + w.slice(0,p); its reverse complement is u*r + u.slice(0,p)
+ * with u = rc(w) rotated left by k - p, so the repeat count and the partial
+ * length survive the flip -- only the motif's rotation changes.
+ */
+function mirrorStretch(s, n) {
+  const {k, repeats: r, partialLen: p} = s;
+  const rcW = rcSeq(s.variant);
+  const u   = rcW.slice(k - p) + rcW.slice(0, k - p);
+
+  const start = n - (s.start + r * k + p);
+  const {canonical, isRc} = motifToCanonical[u];
+  const fwd = isRc ? rcSeq(u) : u;
+  return {start, end: start + r * k, variant: u, canonical, isRc,
+          r: rotationOffset(fwd, canonical), k, repeats: r, partialLen: p};
+}
+
+function mirrorStretches(stretches, n) {
+  return stretches.map(s => mirrorStretch(s, n)).sort((a, b) =>
+    a.start - b.start || b.repeats - a.repeats ||
+    (b.repeats * b.k + b.partialLen) - (a.repeats * a.k + a.partialLen));
+}
+
+/** Find stretches on the canonical strand, reported in seq's orientation. */
+function callStretches(seq, minRepeats) {
+  const [analysisSeq, flipped] = canonicalStrand(seq);
+  const stretches = findStretches(analysisSeq, minRepeats);
+  return flipped ? mirrorStretches(stretches, seq.length) : stretches;
 }
 
 /**
@@ -964,6 +1024,7 @@ function analyze() {
   const hideN       = document.getElementById('hide-n').checked;
   const fullSeqGaps = document.getElementById('full-seq-gaps').checked;
   const stripEndsN  = document.getElementById('strip-ends-n').checked;
+  const flipStrand  = document.getElementById('reverse-complement').checked;
   const trimFront   = Math.max(0, parseInt(document.getElementById('trim-front').value) || 0);
   const trimEnd     = Math.max(0, parseInt(document.getElementById('trim-end').value)   || 0);
   const resultsEl  = document.getElementById('results');
@@ -989,8 +1050,9 @@ function analyze() {
       const end = trimEnd > 0 ? Math.max(trimFront, seq.length - trimEnd) : seq.length;
       seq = seq.slice(trimFront, end);
     }
+    if (flipStrand) seq = rcSeq(seq);
 
-    const stretches  = findStretches(seq, minRepeats);
+    const stretches  = callStretches(seq, minRepeats);
     stretches.forEach(s => allFoundCanonicals.add(s.canonical));
     const colorMap   = assignColors(stretches);
     const {nomenclature, segments} = buildNomenclature(seq, stretches, hideN, fullSeqGaps, stripEndsN, colorMap);
