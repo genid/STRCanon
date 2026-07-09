@@ -827,22 +827,42 @@ function buildVisual(seq, segments, colorMap) {
 /**
  * Expand a bracket nomenclature string back to a plain DNA sequence.
  * Handles RC motifs (~ prefix), rotation (>r), and partial repeats (.p).
- * Ignores gap/overlap markers. Input counts must use regular digits.
+ *
+ * Terms are written through a cursor rather than concatenated, because [N]-n
+ * is an overlap: it rewinds the cursor n bases so the next stretch re-states
+ * bases the previous one already covered. Concatenating would double them.
+ * [N]n is a gap of unknown bases and expands to n literal Ns, preserving length.
+ * Input counts must use regular digits.
  */
 function convertNomenclatureToSequence(nomenclature) {
-  let seq = '';
+  const out = [];        // bases written so far, addressed by `cursor`
+  let cursor = 0;
+
   for (const m of nomenclature.matchAll(/\(([ACGTN]+)\)|\[(~?)([ACGTN]+)(?:>(\d+))?\](-?\d+)(?:\.(\d+))?/g)) {
-    if (m[1] !== undefined) { seq += m[1]; continue; }
-    const [, , tilde, canonical, rotStr, countStr, partialStr] = m;
-    const n = parseInt(countStr);
-    if (n < 0 || canonical === 'N') continue;
-    const r       = rotStr ? parseInt(rotStr) : 0;
-    const p       = partialStr ? parseInt(partialStr) : 0;
-    const rotated = canonical.slice(r) + canonical.slice(0, r);
-    const variant = tilde === '~' ? rcSeq(rotated) : rotated;
-    seq += variant.repeat(n) + variant.slice(0, p);
+    let piece;
+    if (m[1] !== undefined) {
+      piece = m[1];
+    } else {
+      const [, , tilde, canonical, rotStr, countStr, partialStr] = m;
+      const n = parseInt(countStr);
+      if (canonical === 'N') {
+        if (n < 0) {                       // overlap: rewind, then overwrite
+          cursor += n;
+          if (cursor < 0) throw new Error(`overlap [N]${n} rewinds past the start`);
+          continue;
+        }
+        piece = 'N'.repeat(n);             // gap of unknown bases
+      } else {
+        const r       = rotStr ? parseInt(rotStr) : 0;
+        const p       = partialStr ? parseInt(partialStr) : 0;
+        const rotated = canonical.slice(r) + canonical.slice(0, r);
+        const variant = tilde === '~' ? rcSeq(rotated) : rotated;
+        piece = variant.repeat(n) + variant.slice(0, p);
+      }
+    }
+    for (const base of piece) out[cursor++] = base;
   }
-  return seq;
+  return out.join('');
 }
 
 // ── Hamming matrix ────────────────────────────────────────────────────────────

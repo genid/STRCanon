@@ -21,8 +21,14 @@ Notation
     [N]-2        2-base overlap between stretches
     (ACGT)       literal gap sequence (with --full-seq-gaps)
 
+A stretch may claim a partial repeat whose bases the next stretch also covers;
+[N]-2 records that the following stretch starts 2 bases before the previous one
+ended. Expansion therefore writes terms through a cursor: [N]-2 rewinds it two
+bases and the next stretch overwrites them.
+
 Counts use plain digits, so any output line can be fed straight back in with
---expand to reconstruct the underlying sequence.
+--expand. Reconstruction is exact when nothing was suppressed on the way out,
+i.e. with --no-strip-ends-n and the default --full-seq-gaps.
 
 Examples
     strnom.py AAGAAGAAGAGAGAG
@@ -218,24 +224,51 @@ def build_nomenclature(seq, stretches, hide_n, full_seq_gaps, strip_ends_n):
     return ''.join(parts), segments
 
 
+TOKEN = re.compile(
+    r'\(([ACGTN]+)\)|\[(~?)([ACGTN]+)(?:>(\d+))?\](-?\d+)(?:\.(\d+))?'
+)
+
+
 def convert_nomenclature_to_sequence(nomenclature: str) -> str:
-    """Expand a bracket nomenclature back to a plain DNA sequence."""
-    pattern = re.compile(
-        r'\(([ACGTN]+)\)|\[(~?)([ACGTN]+)(?:>(\d+))?\](-?\d+)(?:\.(\d+))?'
-    )
-    out = []
-    for lit, tilde, canonical, rot, count, partial in pattern.findall(nomenclature):
+    """Expand a bracket nomenclature back to a plain DNA sequence.
+
+    Terms are written through a cursor rather than concatenated, because
+    `[N]-n` is an *overlap*: it rewinds the cursor n bases so the following
+    stretch re-states bases the previous one already covered. Concatenating
+    would emit those bases twice.
+
+    `[N]n` (a gap with `--no-full-seq-gaps`) expands to n literal Ns: the
+    bases are unrecoverable, but the length is preserved.
+    """
+    out = []   # bases written so far, addressed by `cursor`
+    cursor = 0
+
+    for lit, tilde, canonical, rot, count, partial in TOKEN.findall(nomenclature):
         if lit:
-            out.append(lit)
-            continue
-        n = int(count)
-        if n < 0 or canonical == 'N':
-            continue
-        r = int(rot) if rot else 0
-        p = int(partial) if partial else 0
-        rotated = canonical[r:] + canonical[:r]
-        variant = reverse_complement(rotated) if tilde == '~' else rotated
-        out.append(variant * n + variant[:p])
+            piece = lit
+        elif canonical == 'N':
+            n = int(count)
+            if n < 0:                      # overlap: rewind, then overwrite
+                cursor += n
+                if cursor < 0:
+                    raise ValueError(
+                        f'overlap [N]{n} rewinds past the start of the sequence')
+                continue
+            piece = 'N' * n                # gap of unknown bases
+        else:
+            r = int(rot) if rot else 0
+            p = int(partial) if partial else 0
+            rotated = canonical[r:] + canonical[:r]
+            variant = reverse_complement(rotated) if tilde == '~' else rotated
+            piece = variant * int(count) + variant[:p]
+
+        for base in piece:
+            if cursor < len(out):
+                out[cursor] = base
+            else:
+                out.append(base)
+            cursor += 1
+
     return ''.join(out)
 
 

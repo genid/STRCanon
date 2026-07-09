@@ -34,8 +34,27 @@ motifs at that length.
 (ACGT)       literal gap sequence (with --full-seq-gaps)
 ```
 
-Counts use plain digits, so any output line can be fed straight back in
-with `--expand` to reconstruct the underlying sequence.
+A stretch may claim a partial repeat whose bases the *next* stretch also
+covers — `[AAG]3.1` and `[AG]4` in the example below both describe the `A`
+at offset 9. `[N]-2` records exactly that: the following stretch starts 2
+bases before the previous one ended. When expanding, terms are therefore
+written through a cursor rather than concatenated: `[N]-2` rewinds the
+cursor 2 bases and the next stretch overwrites them.
+
+```
+AAGAAGAAGAGAGAG   ->  [AAG]3.1[N]-3[AG]4
+AAGAAGAAGA             [AAG]3.1
+       AGAGAGAG                 [AG]4   (starts 3 bases early -> [N]-3)
+```
+
+Counts use plain digits, so any output line can be fed straight back in with
+`--expand`. The reconstruction is exact when no information was suppressed on
+the way out — that is, with `--no-strip-ends-n` (keep the flanking sequence)
+and the default `--full-seq-gaps` (write gap bases literally). Under
+`--no-full-seq-gaps` a gap becomes `[N]n`, which expands to `n` Ns: the length
+is preserved but the gap bases are not recoverable. Under the default
+`--strip-ends-n` the flanks are dropped, so `--expand` returns the STR region
+only.
 
 ## Files
 
@@ -51,6 +70,10 @@ with `--expand` to reconstruct the underlying sequence.
 - **`str_canonical_motifs.tsv`** — precomputed lookup table produced by
   `generate_canonicals.py`, provided for reference and for use in other
   tools/languages.
+- **`test_strcanon.py`** — test suite (`python -m unittest test_strcanon`).
+  Covers canonicalization against the lookup table, rendering of common
+  forensic loci (D21S11, vWA, FGA, TH01, …), strand symmetry, and
+  `expand(render(seq)) == seq` over randomized repeat-dense sequences.
 - **`index.html`** — a self-contained, in-browser version of the tool
   ([live at genid.github.io/STRCanon](https://genid.github.io/STRCanon/)):
   paste in sequences or nomenclature strings and get canonical nomenclature,
@@ -87,6 +110,12 @@ Options:
 ## Requirements
 
 Python 3.9+ (standard library only, no dependencies).
+
+## Tests
+
+```bash
+python -m unittest test_strcanon
+```
 
 ## Generating the lookup table
 
