@@ -64,6 +64,9 @@ repeat from one end of a run to the other. Trim consistently (`--trim-front` /
 [N]5         5-base gap between stretches
 [N]-2        2-base overlap between stretches
 (ACGT)       literal gap sequence (with --full-seq-gaps)
+{TH01 CE=9.3 region=42bp len=125bp}
+             CE annotation prefix (see below); not part of the repeat
+             grammar, so --expand ignores it
 ```
 
 A stretch may claim a partial repeat whose bases the *next* stretch also
@@ -88,6 +91,107 @@ is preserved but the gap bases are not recoverable. Under the default
 `--strip-ends-n` the flanks are dropped, so `--expand` returns the STR region
 only.
 
+## CE alleles and forensic markers
+
+A capillary electrophoresis (CE) allele is a *length* call: the fragment is
+sized, and its size is read off as a repeat count. Sequence nomenclature carries
+far more information, but it does not by itself say which CE allele a sequence
+would have been called as — and CE allele numbers are what the rest of forensic
+practice is written in (databases, match reports, published frequencies). So
+STRCanon reports both:
+
+```
+$ strcanon.py TGCAGGTCACAGGGAACACAGACTCCATGGTGAATGAATG...GGGAAATAAGGGAGGAACAGG
+{TH01 CE=9.3 region=42bp len=125bp} [AATG>2]6.2[AATG>1]4
+```
+
+The pair is the point. Two sequences with the **same CE allele but different
+brackets** are iso-alleles: one length, two molecules, which CE alone cannot
+tell apart. Real example — both of these are TH01 allele 9:
+
+```
+{TH01 CE=9 region=39bp len=230bp} [AATG>2]9.3      MH085122.2
+{TH01 CE=9 region=39bp len=230bp} [AATG>2]8.3      MH085123.2   (TGAG first repeat)
+```
+
+The sequence length is reported whether or not a marker is recognised. The
+braces sit outside the repeat grammar, so an annotated line still round-trips
+through `--expand`; `--no-ce` turns the prefix off entirely.
+
+### How the CE allele is inferred
+
+Each marker in the panel supplies two flanking **anchor** sequences, the repeat
+**period** (4 = tetranucleotide, 5 = penta, …), and an **offset** — the number
+of non-repeat bases between the anchors, i.e. the region length of a
+hypothetical allele 0. The region between the anchors is then
+
+```
+region_len = offset + period * allele
+```
+
+so the allele is `divmod(region_len - offset, period)`: the quotient is the
+repeat count and the remainder is the `.n` of a microvariant. TH01 9.3 is 9
+whole `AATG` repeats plus a 3-base `ATG`, and lands 42 bases between its
+anchors: `3 + 4×9 + 3`.
+
+The anchors are what make this kit-independent. An amplicon's absolute size
+depends on where a kit's primers sit, but the offset is calibrated against the
+*same* anchor pair used to measure the region, so the primer-dependent constant
+cancels out: any sequence containing both anchors gives the same CE allele, no
+matter how much flanking sequence came with it.
+
+Anchors tolerate one mismatch by default (`--flank-mismatches`), because
+flanking SNPs are common — STRSeq MH085118.2 is a TH01 allele 7 carrying
+`AACAGAGACT` where the reference reads `AACACAGACT`, and an exact-only anchor
+misses the locus entirely.
+
+### When there is no call
+
+The tool declines to guess in two situations, and says which:
+
+- **No flanking sequence.** A sequence trimmed down to the repeat array itself
+  has nothing to anchor to, so its length is not recoverable and no CE allele is
+  reported. It is still named — just not sized.
+- **Ambiguous anchors.** If an anchor matches in more than one place, the STR
+  region has no single length. STRSeq MN983127.1 is a D13S317 duplication allele
+  (28.2) in which the whole repeat block *and its 3′ flank* occur twice, so the
+  3′ anchor matches once *inside* the array. Taking the first match would report
+  a confident allele 10 for a sequence that is really a 28.2, so STRCanon reports
+  `CE=ambiguous` instead.
+
+### The panel
+
+The bundled panel is the **20 CODIS core loci**. Its anchors and offsets were
+fitted to [NIST STRSeq](https://strseq.nist.gov/) (BioProject PRJNA380127), the
+public catalogue of sequenced STR alleles, and validated against all 1208 of its
+CODIS records:
+
+| | |
+| --- | --- |
+| locus assignment | **1208 / 1208** correct, no cross-locus collisions |
+| CE allele, where called | **934 / 934** match the published length-based allele |
+| no call | 273 unanchorable (too little flank), 1 ambiguous (the duplication) |
+
+Nothing is called wrong; what cannot be determined is declined. The 273
+unanchorable records are a property of the data, not the method — STRSeq records
+are trimmed to the ISFG reported range, and many retain under 12 bp of flank.
+The panel's anchors therefore sit as close to the repeat as they can while
+staying unambiguous; anchors placed further out (as read-based tools use, since
+they see whole amplicons) fall outside that range and are simply absent.
+
+Panels are swappable. `--markers FILE` takes the same 7-column layout, which is
+also STRait Razor's locus-config format, so a lab's existing kit config —
+ForenSeq, PowerSeq, Y-STR, SE33, anything not in the CODIS core — can be passed
+in directly:
+
+```bash
+strcanon.py --list-markers                      # show the bundled panel
+strcanon.py --markers ForenSeq.config seqs.txt  # use a lab panel instead
+strcanon.py --marker TH01 --input seqs.txt      # force one marker
+```
+
+**Validate any panel against your own kit before casework.**
+
 ## Files
 
 - **`strcanon.py`** — command-line tool. Detects STR stretches in DNA
@@ -95,6 +199,12 @@ only.
   canonical motif for every k-mer is derived on the fly using the same
   lexicographic-minimum rule as `generate_canonicals.py`, so no external
   lookup table is required at run time.
+- **`str_markers.py`** — the forensic marker panel and CE allele inference:
+  anchor matching, the `offset + period × allele` arithmetic, and the panel
+  itself. Run it directly to print the panel; `--export` regenerates
+  `str_markers.tsv`.
+- **`str_markers.tsv`** — the panel exported for use by other tools/languages
+  (columns: `marker`, `type`, `flank5`, `flank3`, `motif`, `period`, `offset`).
 - **`generate_canonicals.py`** — generates the canonical motif lookup
   table for all k-mers of length 1-6 and writes it to
   `str_canonical_motifs.tsv` (columns: `motif`, `canonical`,
@@ -107,6 +217,12 @@ only.
   forensic loci (D21S11, vWA, FGA, TH01, …), strand symmetry of the calls, and
   `expand(render(seq)) == seq` on both strands over randomized repeat-dense
   sequences.
+- **`test_markers.py`** — test suite for the CE allele feature
+  (`python -m unittest test_markers`). The fixtures are real STRSeq records
+  carrying their published length-based allele, so the panel is regression-locked
+  against ground truth: the TH01 9.3 microvariant, a flanking-SNP allele that is
+  only found because anchors tolerate a mismatch, a record trimmed past its
+  anchors (no call), the D13S317 duplication (ambiguous), and an iso-allele pair.
 - **`index.html`** — a self-contained, in-browser version of the tool
   ([live at genid.github.io/STRCanon](https://genid.github.io/STRCanon/)):
   paste in sequences or nomenclature strings and get canonical nomenclature,
@@ -121,6 +237,8 @@ strcanon.py TGCAAGAAGAAG --no-strip-ends-n          # keep the leading (TGC)
 strcanon.py --input seqs.txt --visual --matrix
 echo TTCTTCTTCTTCTT | strcanon.py                   # -> [~AAG>2]4.2
 strcanon.py --expand '(TGC)[AAG]4[AG]3.1'           # nomenclature -> sequence
+strcanon.py --input alleles.txt --no-ce             # sequence nomenclature only
+strcanon.py --list-markers                          # the forensic marker panel
 ```
 
 Options:
@@ -140,6 +258,11 @@ Options:
 | `--matrix` | also print pairwise Hamming distances between motifs found |
 | `--expand` | treat inputs as nomenclature and print the DNA sequence |
 | `--color {auto,always,never}` | ANSI colour in `--visual` / `--matrix` output (default: auto) |
+| `--ce / --no-ce` | prefix each line with the sequence length and, when a panel marker is recognised, its CE allele (default: on) |
+| `--markers FILE` | marker panel to use instead of the bundled one (also reads STRait Razor `.config` files) |
+| `--marker NAME` | force a single marker instead of searching the whole panel |
+| `--flank-mismatches N` | mismatches tolerated per anchor, for flanking SNPs (default: 1) |
+| `--list-markers` | print the marker panel and exit |
 
 ## Requirements
 
@@ -148,7 +271,7 @@ Python 3.9+ (standard library only, no dependencies).
 ## Tests
 
 ```bash
-python -m unittest test_strcanon
+python -m unittest discover -p "test_*.py"
 ```
 
 ## Generating the lookup table

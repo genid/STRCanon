@@ -20,6 +20,22 @@ Notation
     [N]5         5-base gap between stretches
     [N]-2        2-base overlap between stretches
     (ACGT)       literal gap sequence (with --full-seq-gaps)
+    {...}        CE annotation prefix (see below)
+
+CE annotation
+    When a forensic marker from the panel is recognised by its flanking
+    anchors, the line is prefixed with the marker, the capillary
+    electrophoresis (CE) allele its length would have been called as, the
+    length of the anchored STR region the call came from, and the length of
+    the whole sequence:
+
+        {TH01 CE=9.3 region=83bp len=125bp} [AATG]6.1[AATG>2]3.2
+
+    With no marker recognised, only the sequence length is shown ({len=125bp}).
+    Two sequences sharing a CE allele but differing in their brackets are
+    iso-alleles: one length, two molecules. The braces are not part of the
+    repeat grammar, so --expand ignores them and a CE-annotated line still
+    round-trips. --no-ce turns the prefix off entirely.
 
 A stretch may claim a partial repeat whose bases the next stretch also covers;
 [N]-2 records that the following stretch starts 2 bases before the previous one
@@ -46,6 +62,8 @@ import sys
 import re
 import argparse
 from itertools import product
+
+import str_markers
 
 COMPLEMENT = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'N': 'N'}
 ACCEPTED = set('ACGTN')
@@ -284,6 +302,48 @@ def build_nomenclature(seq, stretches, hide_n, full_seq_gaps, strip_ends_n):
     return ''.join(parts), segments
 
 
+# ── CE annotation ─────────────────────────────────────────────────────────────
+
+def ce_annotation(seq: str, hit) -> str:
+    """The `{...}` prefix: marker, CE allele, anchored region, sequence length.
+
+    Written in braces so it sits outside the repeat grammar entirely -- TOKEN
+    never matches it, so an annotated line still round-trips through --expand.
+
+    The sequence length is always reported, with or without a marker. It is what
+    separates iso-alleles at a glance: two sequences can share a CE allele and
+    still differ in their brackets, and CE cannot tell them apart.
+    """
+    length = f'len={len(seq)}bp'
+    if hit is None:
+        return f'{{{length}}}'
+    if hit.ambiguous:
+        # An anchor matched in several places (e.g. a duplication allele), so
+        # the region has no single length. Say so rather than invent a call.
+        return f'{{{hit.marker.name} CE=ambiguous {length}}}'
+    return (f'{{{hit.marker.name} CE={hit.allele} '
+            f'region={hit.region_len}bp {length}}}')
+
+
+def ce_detail(seq: str, hit) -> str:
+    """The long form of the CE call, for --visual / --matrix output."""
+    if hit is None:
+        return (f'{len(seq)}bp, no panel marker recognised '
+                f'(no CE allele: the anchors are not in this sequence)')
+    m = hit.marker
+    where = 'reverse strand' if hit.strand == '-' else 'as given'
+    fuzzy = (f', {hit.mismatches} anchor mismatch'
+             f'{"es" if hit.mismatches != 1 else ""}' if hit.mismatches else '')
+    if hit.ambiguous:
+        return (f'{m.name}, CE allele ambiguous: an anchor matches in more than '
+                f'one place, so the STR region has no single length ({where})')
+    return (f'{m.name} CE allele {hit.allele} '
+            f'[region {hit.region_len}bp = offset {m.offset} '
+            f'+ {m.period} x {hit.allele.repeats}'
+            f'{f" + {hit.allele.remainder}" if hit.allele.remainder else ""}]'
+            f' ({where}{fuzzy})')
+
+
 TOKEN = re.compile(
     r'\(([ACGTN]+)\)|\[(~?)([ACGTN]+)(?:>(\d+))?\](-?\d+)(?:\.(\d+))?'
 )
@@ -499,6 +559,23 @@ def main() -> None:
                         'the motifs are shown in and how each is written, never how '
                         'they are called (default: as-given)')
 
+    ce = p.add_argument_group('CE allele')
+    ce.add_argument('--ce', action=argparse.BooleanOptionalAction, default=True,
+                    help='prefix each line with the sequence length and, when a '
+                         'panel marker is recognised, its CE allele (default: on)')
+    ce.add_argument('--markers', metavar='FILE',
+                    help='marker panel to use instead of the bundled one '
+                         '(7 columns: marker, type, flank5, flank3, motif, '
+                         'period, offset -- also STRait Razor .config layout)')
+    ce.add_argument('--marker', metavar='NAME',
+                    help='force a single marker from the panel instead of '
+                         'searching all of them')
+    ce.add_argument('--flank-mismatches', type=int, default=1, metavar='N',
+                    help='mismatches tolerated per anchor, for flanking SNPs '
+                         '(default: 1)')
+    ce.add_argument('--list-markers', action='store_true',
+                    help='print the marker panel and exit')
+
     adv = p.add_argument_group('advanced')
     adv.add_argument('--trim-front', type=int, default=0, metavar='N',
                      help='remove N bases from the start of each sequence before analysis')
@@ -514,6 +591,29 @@ def main() -> None:
     p.add_argument('--color', choices=('auto', 'always', 'never'), default='auto',
                    help='ANSI colour in --visual / --matrix output (default: auto)')
     args = p.parse_args()
+
+    panel = None
+    if args.ce or args.list_markers:
+        try:
+            panel = str_markers.load_panel(args.markers)
+        except (OSError, ValueError) as exc:
+            p.error(f'--markers: {exc}')
+        if args.marker and not any(m.name.casefold() == args.marker.casefold()
+                                   for m in panel):
+            p.error(f'--marker: {args.marker!r} is not in the panel '
+                    f'(see --list-markers)')
+
+    if args.list_markers:
+        print(f'# {len(panel)} markers'
+              + (f' from {args.markers}' if args.markers
+                 else f' ({str_markers.PROVENANCE})'))
+        print(f'# region_len = offset + period * allele, between the anchors')
+        print(f'{"marker":<12}{"type":<10}{"period":>7}{"offset":>7}  '
+              f'{"flank5":<22}{"flank3":<22}')
+        for m in panel:
+            print(f'{m.name:<12}{m.mtype:<10}{m.period:>7}{m.offset:>7}  '
+                  f'{m.flank5:<22}{m.flank3:<22}')
+        return
 
     inputs = gather_inputs(args)
     if not inputs:
@@ -545,6 +645,10 @@ def main() -> None:
         nomenclature, segments = build_nomenclature(
             seq, stretches, args.hide_n, args.full_seq_gaps, args.strip_ends_n)
 
+        hit = (str_markers.identify(seq, panel, args.flank_mismatches, args.marker)
+               if args.ce else None)
+        body = nomenclature or '(no repeats found)'
+
         if structured:
             if idx > 1:
                 print()
@@ -552,11 +656,13 @@ def main() -> None:
             if had_invalid:
                 print("# (invalid characters were ignored)")
             print(f"seq  : {seq}")
-            print(f"nom  : {nomenclature or '(no repeats found)'}")
+            if args.ce:
+                print(f"ce   : {ce_detail(seq, hit)}")
+            print(f"nom  : {body}")
             if args.visual and segments:
                 print(build_visual(seq, segments, color_index, palette))
         else:
-            print(nomenclature or '(no repeats found)')
+            print(f'{ce_annotation(seq, hit)} {body}' if args.ce else body)
 
     if args.matrix:
         matrix = build_matrices(all_canonicals, palette)

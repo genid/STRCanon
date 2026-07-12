@@ -274,6 +274,43 @@
     margin-bottom: .8rem;
   }
 
+  /* CE allele call */
+  .ce-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: .7rem;
+    font-size: .84rem;
+  }
+  .ce-marker {
+    background: #1f6feb;
+    color: #fff;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: .22rem .6rem;
+    letter-spacing: .02em;
+  }
+  .ce-allele {
+    background: #e8f0fe;
+    color: #12428f;
+    border: 1px solid #c3d6f7;
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    border-radius: 5px;
+    padding: .22rem .6rem;
+  }
+  .ce-meta   { color: #6a6a6a; font-family: 'Courier New', monospace; }
+  .ce-none   { color: #888; font-style: italic; }
+  .ce-ambig  {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #7a6000;
+    border-radius: 5px;
+    padding: .22rem .6rem;
+    font-weight: 600;
+  }
+
   .error-box {
     background: #fff0f0;
     border: 1px solid #fcc;
@@ -429,6 +466,12 @@
              title="Show the result on the other strand. Motifs, repeat counts and partials are unchanged — only the order they are shown in.">
         <input type="checkbox" id="reverse-complement">
         <span>Reverse-complement strand</span>
+      </label>
+
+      <label class="checkbox-row"
+             title="Recognise a forensic marker by its flanking anchors and report the capillary electrophoresis (CE) allele its length would be called as, alongside the sequence length.">
+        <input type="checkbox" id="ce-allele" checked>
+        <span>CE allele (forensic markers)</span>
       </label>
 
       <button id="run-btn" disabled>Analyze</button>
@@ -1002,6 +1045,152 @@ function buildHammingMatrices(canonicals) {
 
 // ── UI ────────────────────────────────────────────────────────────────────────
 
+/* ── Forensic markers and CE alleles ────────────────────────────────────────
+ *
+ * A CE allele is a length call. The region between a marker's two anchors is
+ *
+ *     regionLen = offset + period * allele
+ *
+ * so the allele is just divmod(regionLen - offset, period): the quotient is the
+ * repeat count, the remainder is the ".n" of a microvariant (TH01 9.3 = 9 whole
+ * AATG repeats + a 3-base ATG).
+ *
+ * Anchors and offsets are fitted to NIST STRSeq (BioProject PRJNA380127) and
+ * reproduce the published length-based allele for every one of its 1208 records
+ * they can be placed in. Keep in step with str_markers.py.
+ */
+const MARKER_PANEL = [
+  {name:'CSF1PO', type:'AUTOSOMAL', f5:'GACCCTGTTCTAAGTACTTC', f3:'TCTATCTATGAAGGCAGTTA', motif:'AGAT', period:4, offset:15},
+  {name:'D10S1248', type:'AUTOSOMAL', f5:'TTGAACAAATGAGTGAGT', f3:'ATGAAGACAATACAACCAGA', motif:'AAGG', period:4, offset:0},
+  {name:'D12S391', type:'AUTOSOMAL', f5:'ATCAATGGATGCATAGGTAG', f3:'GAGGGGATTTATTAGAGGAA', motif:'ACAG', period:4, offset:0},
+  {name:'D13S317', type:'AUTOSOMAL', f5:'ATCTGTATTTACAAATACAT', f3:'TCTGTCTGTCTTTTTGGG', motif:'AGAT', period:4, offset:21},
+  {name:'D16S539', type:'AUTOSOMAL', f5:'TACAGACAGACAGACAGGTG', f3:'TCATTGAAAGACAAAACAGA', motif:'AGAT', period:4, offset:0},
+  {name:'D18S51', type:'AUTOSOMAL', f5:'ACAAATTGAGACCTTGTCTC', f3:'AAGAGAGAGGAAAGAAAGAG', motif:'AAAG', period:4, offset:1},
+  {name:'D19S433', type:'AUTOSOMAL', f5:'ATAAAAATCTTCTCTCTT', f3:'TTTTCCTTCAACAGAATCTT', motif:'AAGG', period:4, offset:11},
+  {name:'D1S1656', type:'AUTOSOMAL', f5:'ACAATTAAACACACACACAC', f3:'ATCATACAGTTGACCCTTGA', motif:'AGAT', period:4, offset:0},
+  {name:'D21S11', type:'AUTOSOMAL', f5:'ATTCCCCAAGTGAATTGCCT', f3:'GTCTATCTACCTCCTATTAG', motif:'ACAG', period:4, offset:26},
+  {name:'D22S1045', type:'AUTOSOMAL', f5:'CTTATAGCTGCTATGGGGGC', f3:'CTATTATTGTTATAAAAATA', motif:'AAT', period:3, offset:19},
+  {name:'D2S1338', type:'AUTOSOMAL', f5:'TGCAGGAGGGAAGGAAGGAC', f3:'TTCTGTTTCCAAATCCACTG', motif:'AAGG', period:4, offset:0},
+  {name:'D2S441', type:'AUTOSOMAL', f5:'CCAGGAACTGTGGCTCATCT', f3:'ATCTATCTATATCA', motif:'AGAT', period:4, offset:0},
+  {name:'D3S1358', type:'AUTOSOMAL', f5:'AACAGAGGCTTGCATGTATC', f3:'AGACAGGGTCTTGCTC', motif:'AGAT', period:4, offset:0},
+  {name:'D5S818', type:'AUTOSOMAL', f5:'TCTGTATCCTTATTTATACC', f3:'TCAAAATATTACGTAAGGAT', motif:'AGAT', period:4, offset:3},
+  {name:'D7S820', type:'AUTOSOMAL', f5:'ATTTAGTGAGATTAAAAAAA', f3:'GTTAGTTCGTTCTAAACTAT', motif:'AGAT', period:4, offset:14},
+  {name:'D8S1179', type:'AUTOSOMAL', f5:'TGTGTACATTCG', f3:'TCCCCACAGTGAAAATAATC', motif:'AGAT', period:4, offset:3},
+  {name:'FGA', type:'AUTOSOMAL', f5:'CAAAAAAGAAAGGAAGAAAG', f3:'TAGCTTGTAAATATGC', motif:'AAAG', period:4, offset:0},
+  {name:'TH01', type:'AUTOSOMAL', f5:'AGGGAACACAGACTCCATGG', f3:'GGGAAATAAGGGAGGAACAG', motif:'AATG', period:4, offset:3},
+  {name:'TPOX', type:'AUTOSOMAL', f5:'GGCACTTAGGGAACCCTCAC', f3:'TTTGGGCAAATAAACGCT', motif:'AATG', period:4, offset:2},
+  {name:'vWA', type:'AUTOSOMAL', f5:'CATAGGATGGATGGATAGAT', f3:'AGATCAATCCAAGTCACATA', motif:'ACAG', period:4, offset:0},
+];
+
+const FLANK_MISMATCHES = 1;   // flanking SNPs are common; allow one per anchor
+
+/* Best match of `probe` in seq[start:]: fewest mismatches, then leftmost.
+ * Returns {i, mm, nBest}; nBest > 1 means the anchor lands in several places
+ * and the region it should delimit is not well defined. */
+function findAnchor(seq, probe, maxMm, start = 0) {
+  if (!probe || probe.length > seq.length - start) return null;
+
+  const exact = [];
+  for (let i = seq.indexOf(probe, start); i !== -1; i = seq.indexOf(probe, i + 1))
+    exact.push(i);
+  if (exact.length) return {i: exact[0], mm: 0, nBest: exact.length};
+  if (maxMm === 0) return null;
+
+  let bestMm = null, hits = [];
+  for (let i = start; i <= seq.length - probe.length; i++) {
+    let mm = 0;
+    for (let j = 0; j < probe.length; j++) {
+      if (seq[i + j] !== probe[j] && ++mm > maxMm) break;
+    }
+    if (mm > maxMm) continue;
+    if (bestMm === null || mm < bestMm) { bestMm = mm; hits = [i]; }
+    else if (mm === bestMm) hits.push(i);
+  }
+  if (bestMm === null) return null;
+  return {i: hits[0], mm: bestMm, nBest: hits.length};
+}
+
+/* Locate one marker in `seq` as given (no strand search). */
+function matchMarker(seq, m, maxMm) {
+  const h5 = findAnchor(seq, m.f5, maxMm);
+  if (!h5) return null;
+  const start = h5.i + m.f5.length;
+
+  const h3 = findAnchor(seq, m.f3, maxMm, start);
+  if (!h3) return null;
+
+  const region    = seq.slice(start, h3.i);
+  const ambiguous = h5.nBest > 1 || h3.nBest > 1;
+
+  // An anchor matching twice leaves no single region. That is not hypothetical:
+  // STRSeq MN983127.1 is a D13S317 duplication allele (28.2) carrying two copies
+  // of the repeat block and its 3' flank. Reporting the first match would give a
+  // confident "10" for a 28.2 — worse than reporting nothing.
+  let repeats = null, remainder = null;
+  if (!ambiguous) {
+    const span = region.length - m.offset;
+    if (span < 0) return null;
+    repeats   = Math.floor(span / m.period);
+    remainder = span % m.period;
+  }
+  return {marker: m, region, regionLen: region.length, ambiguous, repeats, remainder,
+          mismatches: h5.mm + h3.mm, hasMotif: region.includes(m.motif), strand: '+'};
+}
+
+function alleleText(hit) {
+  return hit.remainder ? `${hit.repeats}.${hit.remainder}` : `${hit.repeats}`;
+}
+
+/* Best marker for `seq`, searching both strands. */
+function identifyMarker(seq, maxMm = FLANK_MISMATCHES) {
+  const rc = rcSeq(seq);
+  let best = null, bestKey = null;
+  for (const m of MARKER_PANEL) {
+    for (const [strand, target] of [['+', seq], ['-', rc]]) {
+      const hit = matchMarker(target, m, maxMm);
+      if (!hit) continue;
+      hit.strand = strand;
+      const key = [hit.ambiguous ? 1 : 0, hit.mismatches, hit.hasMotif ? 0 : 1, m.name];
+      if (!best || cmpKey(key, bestKey) < 0) { best = hit; bestKey = key; }
+    }
+  }
+  return best;
+}
+
+function cmpKey(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] < b[i]) return -1;
+    if (a[i] > b[i]) return 1;
+  }
+  return 0;
+}
+
+/* The CE row of a result card. The sequence length is always shown, marker or
+ * not: it is what separates iso-alleles at a glance — two sequences can share a
+ * CE allele and still differ in their brackets, and CE cannot tell them apart. */
+function buildCeRow(seq, hit) {
+  const len = `<span class="ce-meta">${seq.length} bp</span>`;
+  if (!hit)
+    return `<div class="ce-row">${len}<span class="ce-none">no panel marker recognised —
+            the anchors are not in this sequence, so there is no CE allele to call</span></div>`;
+  if (hit.ambiguous)
+    return `<div class="ce-row"><span class="ce-marker">${hit.marker.name}</span>
+            <span class="ce-ambig">CE allele ambiguous</span>
+            <span class="ce-meta">an anchor matches in more than one place, so the
+            STR region has no single length</span>${len}</div>`;
+
+  const m = hit.marker;
+  const sum = `${m.offset} + ${m.period}×${hit.repeats}` +
+              (hit.remainder ? ` + ${hit.remainder}` : '');
+  return `<div class="ce-row">
+    <span class="ce-marker">${m.name}</span>
+    <span class="ce-allele">CE ${alleleText(hit)}</span>
+    <span class="ce-meta">region ${hit.regionLen} bp = ${sum}</span>
+    ${len}
+    ${hit.strand === '-' ? '<span class="ce-meta">(reverse strand)</span>' : ''}
+  </div>`;
+}
+
 function copyNomenclature(btn) {
   const card  = btn.closest('.result-card');
   const el    = card.querySelector('.nomenclature');
@@ -1027,6 +1216,7 @@ function analyze() {
   const flipStrand  = document.getElementById('reverse-complement').checked;
   const trimFront   = Math.max(0, parseInt(document.getElementById('trim-front').value) || 0);
   const trimEnd     = Math.max(0, parseInt(document.getElementById('trim-end').value)   || 0);
+  const showCe      = document.getElementById('ce-allele').checked;
   const resultsEl  = document.getElementById('results');
 
   if (!raw) { resultsEl.innerHTML = ''; document.getElementById('matrix-section').innerHTML = ''; return; }
@@ -1067,10 +1257,13 @@ function analyze() {
       })
       .join('');
 
+    const ceHit = showCe ? identifyMarker(seq) : null;
+
     html.push(`
       <div class="result-card">
         <h2>Result ${resultIndex}</h2>
         ${hasInvalid ? '<div class="notice">Invalid characters were ignored.</div>' : ''}
+        ${showCe ? buildCeRow(seq, ceHit) : ''}
         <div class="seq-line">${seq}</div>
         <div class="nom-row">
           <div class="nomenclature">${nomenclature || '(no repeats found)'}</div>
