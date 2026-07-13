@@ -1231,24 +1231,33 @@ function markerTip(hit) {
 
   return makeTip([
     {label: 'Marker',      value: `${m.name} &nbsp;<span style="color:#7a7a9a">${m.type.toLowerCase()}</span>`},
-    {label: 'Repeat unit', value: `${m.motif}`,
-     note: `the repeat that is counted; ${m.period} bp long, so period = ${m.period}`},
+    {label: 'Period',      value: `${m.period} bp`,
+     note: 'the step the region length is divided into — the size of one allele increment'},
+    {label: 'Expected motif', value: `${m.motif}`,
+     note: 'used only to tell this marker apart from others whose anchors also ' +
+           'match. It is not counted, and the region may be built from several ' +
+           'different units.'},
     {label: "5&prime; anchor", value: m.f5,
      note: `${m.f5.length} bp; marks where the STR region starts`},
     {label: "3&prime; anchor", value: m.f3,
      note: `${m.f3.length} bp; marks where it ends`},
     {label: 'Offset',      value: `${m.offset} bp`,
      note: m.offset === 0
-       ? 'the region between the anchors is pure repeat — nothing to subtract'
-       : `${m.offset} bp inside the region are not part of the counted repeat ` +
-         '(fixed flanking bases and interruptions). Constant for this marker.'},
+       ? 'nothing to subtract: the region length is a whole number of periods on its own'
+       : `${m.offset} bp of the region are not part of an allele step. Subtracted ` +
+         'before dividing, and constant for this marker.'},
     {label: 'Found on',    value: strand, note: mm},
   ], 'tip-wide tip-below tip-start');
 }
 
-/* How the number was arrived at: region = offset + period × allele. This is the
- * whole of a CE call, and it is worth being able to see it, because CE is a
- * length measurement and nothing more. */
+/* How the number was arrived at: region = offset + period × allele.
+ *
+ * That is the whole of a CE call and worth being able to see, because it is a
+ * length measurement and nothing more. The tooltip must not describe the allele
+ * as a count of the marker's motif: at a compound locus like D21S11 the region
+ * is a mix of AGAT and ACAG blocks with interruptions, so "29" is 29 periods of
+ * length, not 29 copies of anything. The bracket line is what shows the actual
+ * structure. */
 function alleleTip(seq, hit) {
   const m   = hit.marker;
   const sum = `${m.offset} + ${m.period}&times;${hit.repeats}` +
@@ -1256,17 +1265,20 @@ function alleleTip(seq, hit) {
 
   const rows = [
     {label: 'CE allele', value: alleleText(hit),
-     note: hit.remainder
-       ? `${hit.repeats} whole ${m.motif} repeats plus a partial one of ${hit.remainder} bp — ` +
-         `the ".${hit.remainder}" of a microvariant`
-       : `${hit.repeats} whole ${m.motif} repeats, with no partial repeat left over`},
+     note: 'a length call, read off the region below. CE resolves length only: it ' +
+           'says nothing about how the repeat is arranged, and two sequences with ' +
+           'this allele can differ in their brackets.'},
     {label: 'STR region', value: `${hit.regionLen} bp`,
      note: 'the sequence lying between the two anchors — this is what is measured'},
     {label: 'Derivation',
      value: `<span class="tip-eq">${hit.regionLen} = ${sum}</span>`,
-     note: `region = offset + period &times; allele, so the allele is just ` +
+     note: `region = offset + period &times; allele, so the allele is ` +
            `(${hit.regionLen} &minus; ${m.offset}) &divide; ${m.period}` +
-           (hit.remainder ? `, with ${hit.remainder} bp remaining` : ' exactly')},
+           (hit.remainder
+             ? ` = ${hit.repeats}, with ${hit.remainder} bp left over. That remainder ` +
+               `is the &ldquo;.${hit.remainder}&rdquo; of a microvariant: the region is ` +
+               `${hit.remainder} bp past a whole number of periods.`
+             : ` = ${hit.repeats} exactly, with no bp left over.`)},
     {label: 'Sequence', value: `${seq.length} bp`,
      note: 'the whole input, anchors and outer flanks included — longer than the region'},
   ];
