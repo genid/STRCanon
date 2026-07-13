@@ -398,6 +398,60 @@
     letter-spacing: .05em;
     margin-bottom: .55rem;
   }
+  /* Results table — one row per input sequence, exportable as CSV/TSV */
+  .table-section {
+    background: #fff;
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.08);
+  }
+  .table-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: .85rem;
+  }
+  .table-head h2 { font-size: 1rem; font-weight: 700; color: #444; }
+  .dl-btns { display: flex; gap: .45rem; }
+  .dl-btn {
+    background: #1f6feb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: .38rem .85rem;
+    font-size: .8rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .dl-btn:hover  { background: #1558c0; }
+  .dl-btn.copied { background: #2da44e; }
+
+  .res-wrap  { overflow-x: auto; }
+  .res-table {
+    border-collapse: collapse;
+    font-size: .78rem;
+    font-family: 'Courier New', monospace;
+    width: 100%;
+  }
+  .res-table th, .res-table td {
+    border: 1px solid #e6e6ec;
+    padding: .32rem .55rem;
+    text-align: left;
+    white-space: nowrap;
+  }
+  .res-table th { background: #f5f6f8; color: #555; font-weight: 700; }
+  .res-table tbody tr:nth-child(even) { background: #fafbfc; }
+  /* The long free-text columns: clip on screen, but the export keeps them whole. */
+  .res-table td.wide {
+    max-width: 26rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .res-table td.dim { color: #999; }
+
   .matrix-wrap { overflow-x: auto; }
   .hm-table {
     border-collapse: collapse;
@@ -582,6 +636,7 @@
   </details>
 
   <div id="results"></div>
+  <div id="table-section"></div>
   <div id="matrix-section"></div>
 </div>
 
@@ -1309,6 +1364,122 @@ function buildCeRow(seq, hit) {
   </div>`;
 }
 
+/* ── Results table ──────────────────────────────────────────────────────────
+ *
+ * One row per input sequence. The table on screen and the CSV/TSV download are
+ * generated from the same column list, so the file is exactly what was shown —
+ * except that the screen clips the long sequence and nomenclature columns and
+ * the export never does.
+ *
+ * Marker columns are blank when CE calling is switched off, or when no marker
+ * was recognised; that is a real "not called", not a zero.
+ */
+const RESULT_COLUMNS = [
+  {key: 'n',            label: 'n'},
+  {key: 'marker',       label: 'marker'},
+  {key: 'ce_allele',    label: 'ce_allele'},
+  {key: 'strand',       label: 'strand'},
+  {key: 'region_bp',    label: 'region_bp'},
+  {key: 'offset',       label: 'offset'},
+  {key: 'period',       label: 'period'},
+  {key: 'sequence_bp',  label: 'sequence_bp'},
+  {key: 'motifs',       label: 'canonical_motifs'},
+  {key: 'nomenclature', label: 'nomenclature', wide: true},
+  {key: 'sequence',     label: 'sequence',     wide: true},
+];
+
+let lastResultRows = [];
+
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+}
+
+/* The nomenclature is built as HTML (coloured stretches, tooltips). Strip it
+ * back to the plain bracket string — the same text the Copy button yields. */
+function plainNomenclature(html) {
+  const el = document.createElement('div');
+  el.innerHTML = html;
+  el.querySelectorAll('.tip').forEach(t => t.remove());
+  return el.textContent.trim();
+}
+
+function buildResultRow(n, seq, hit, stretches, nomenclatureHtml) {
+  const called = hit && !hit.ambiguous;
+  return {
+    n,
+    marker:       hit ? hit.marker.name : '',
+    ce_allele:    !hit ? '' : (hit.ambiguous ? 'ambiguous' : alleleText(hit)),
+    strand:       hit ? hit.strand : '',
+    region_bp:    hit ? hit.regionLen : '',
+    offset:       hit ? hit.marker.offset : '',
+    period:       hit ? hit.marker.period : '',
+    sequence_bp:  seq.length,
+    motifs:       [...new Set(stretches.map(s => s.canonical))].sort().join(';'),
+    nomenclature: plainNomenclature(nomenclatureHtml),
+    sequence:     seq,
+  };
+}
+
+function buildResultsTable(rows) {
+  if (!rows.length) return '';
+  const head = RESULT_COLUMNS.map(c => `<th>${c.label}</th>`).join('');
+  const body = rows.map(r => '<tr>' + RESULT_COLUMNS.map(c => {
+    const v   = r[c.key];
+    const cls = [c.wide ? 'wide' : '', v === '' ? 'dim' : ''].filter(Boolean).join(' ');
+    return `<td${cls ? ` class="${cls}"` : ''}>${escHtml(v === '' ? '—' : v)}</td>`;
+  }).join('') + '</tr>').join('');
+
+  return `<div class="table-section">
+    <div class="table-head">
+      <h2>Results table</h2>
+      <div class="dl-btns">
+        <button class="dl-btn" onclick="downloadResults('csv', this)">Download CSV</button>
+        <button class="dl-btn" onclick="downloadResults('tsv', this)">Download TSV</button>
+      </div>
+    </div>
+    <div class="res-wrap">
+      <table class="res-table">
+        <thead><tr>${head}</tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+  </div>`;
+}
+
+/* A TSV cell cannot contain a tab or newline, and none of our values do; a CSV
+ * cell can contain anything provided it is quoted. */
+function delimitCell(value, sep) {
+  const s = String(value ?? '');
+  if (sep === '\t') return s.replace(/[\t\r\n]/g, ' ');
+  return /["\,\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function downloadResults(fmt, btn) {
+  if (!lastResultRows.length) return;
+  const sep   = fmt === 'tsv' ? '\t' : ',';
+  const lines = [RESULT_COLUMNS.map(c => delimitCell(c.label, sep)).join(sep)];
+  for (const r of lastResultRows)
+    lines.push(RESULT_COLUMNS.map(c => delimitCell(r[c.key], sep)).join(sep));
+
+  const mime = fmt === 'tsv' ? 'text/tab-separated-values' : 'text/csv';
+  const blob = new Blob([lines.join('\r\n') + '\r\n'], {type: `${mime};charset=utf-8`});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `strcanon-results.${fmt}`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  if (btn) {
+    const label = btn.textContent;
+    btn.textContent = 'Downloaded';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = label; btn.classList.remove('copied'); }, 1500);
+  }
+}
+
 function copyNomenclature(btn) {
   const card  = btn.closest('.result-card');
   const el    = card.querySelector('.nomenclature');
@@ -1337,9 +1508,16 @@ function analyze() {
   const showCe      = document.getElementById('ce-allele').checked;
   const resultsEl  = document.getElementById('results');
 
-  if (!raw) { resultsEl.innerHTML = ''; document.getElementById('matrix-section').innerHTML = ''; return; }
+  if (!raw) {
+    resultsEl.innerHTML = '';
+    document.getElementById('table-section').innerHTML  = '';
+    document.getElementById('matrix-section').innerHTML = '';
+    lastResultRows = [];
+    return;
+  }
 
   const html = [];
+  const rows = [];
   const allFoundCanonicals = new Set();
   let resultIndex = 0;
 
@@ -1376,6 +1554,7 @@ function analyze() {
       .join('');
 
     const ceHit = showCe ? identifyMarker(seq) : null;
+    rows.push(buildResultRow(resultIndex, seq, ceHit, stretches, nomenclature));
 
     html.push(`
       <div class="result-card">
@@ -1394,6 +1573,10 @@ function analyze() {
   }
 
   resultsEl.innerHTML = html.join('');
+
+  lastResultRows = rows;
+  document.getElementById('table-section').innerHTML = buildResultsTable(rows);
+
   document.getElementById('matrix-section').innerHTML =
     buildHammingMatrices([...allFoundCanonicals].sort());
 }
