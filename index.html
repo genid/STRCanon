@@ -198,6 +198,54 @@
   }
   .has-tip .tip .tip-label:not(:first-child) { margin-top: .5rem; }
 
+  /* Wider, wrapping variant: for tooltips that explain rather than just list.
+   * The base .tip is nowrap monospace, which cannot hold a sentence. */
+  .has-tip .tip.tip-wide {
+    white-space: normal;
+    width: 22rem;
+    line-height: 1.5;
+  }
+  .has-tip .tip .tip-note {
+    display: block;
+    margin-top: .12rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: .72rem;
+    line-height: 1.45;
+    color: #9a9ab5;
+    white-space: normal;
+  }
+  /* The CE row sits at the top-left of a card, so its tooltips open downward
+   * and are left-aligned to the chip — centred-and-above would clip off the
+   * top of the page on the first result, and off the left edge on a short chip. */
+  .has-tip .tip.tip-below {
+    bottom: auto;
+    top: calc(100% + 7px);
+  }
+  .has-tip .tip.tip-below::after {
+    top: auto;
+    bottom: 100%;
+    border-top-color: transparent;
+    border-bottom-color: #1e1e2e;
+  }
+  .has-tip .tip.tip-start {
+    left: 0;
+    transform: none;
+  }
+  .has-tip .tip.tip-start::after {
+    left: 18px;
+    transform: none;
+  }
+
+  /* The derivation line: region = offset + period × allele */
+  .has-tip .tip .tip-eq {
+    display: block;
+    background: #2a2a3e;
+    border-radius: 4px;
+    padding: .25rem .45rem;
+    margin-top: .15rem;
+    color: #cfe3ff;
+  }
+
   /* Colored stretch tokens in the nomenclature line */
   .nomenclature .stretch { border-radius: 4px; padding: 0 2px; }
 
@@ -610,14 +658,17 @@ function truncSeq(s, max = 42) {
 }
 
 /**
- * Build a <span class="tip"> from an array of {label, value} rows.
+ * Build a <span class="tip"> from an array of {label, value, note} rows.
  * Each row renders as a small grey label followed by the value on the
- * same line (or the next, since tip-label is display:block).
+ * same line (or the next, since tip-label is display:block). An optional
+ * `note` adds a dimmed sans-serif gloss under the value, saying what the
+ * value means; pass cls='tip-wide' to let those glosses wrap.
  */
-function makeTip(rows) {
-  return '<span class="tip">' +
-    rows.map(({label, value}) =>
-      `<span class="tip-label">${label}</span>${value}`
+function makeTip(rows, cls = '') {
+  return `<span class="tip${cls ? ' ' + cls : ''}">` +
+    rows.map(({label, value, note}) =>
+      `<span class="tip-label">${label}</span>${value}` +
+      (note ? `<span class="tip-note">${note}</span>` : '')
     ).join('') +
     '</span>';
 }
@@ -1165,9 +1216,68 @@ function cmpKey(a, b) {
   return 0;
 }
 
-/* The CE row of a result card. The sequence length is always shown, marker or
- * not: it is what separates iso-alleles at a glance — two sequences can share a
- * CE allele and still differ in their brackets, and CE cannot tell them apart. */
+/* What the marker itself is: the panel entry that produced the call. Shown on
+ * the marker chip, so the anchors and constants a call depends on are visible
+ * without opening the source. */
+function markerTip(hit) {
+  const m = hit.marker;
+  const strand = hit.strand === '-'
+    ? 'reverse strand (the sequence was reverse-complemented to match)'
+    : 'forward strand, as given';
+  const mm = hit.mismatches === 0
+    ? 'both anchors matched exactly'
+    : `${hit.mismatches} mismatch${hit.mismatches > 1 ? 'es' : ''} across the two anchors ` +
+      `(up to ${FLANK_MISMATCHES} per anchor is allowed — flanking SNPs are common)`;
+
+  return makeTip([
+    {label: 'Marker',      value: `${m.name} &nbsp;<span style="color:#7a7a9a">${m.type.toLowerCase()}</span>`},
+    {label: 'Repeat unit', value: `${m.motif}`,
+     note: `the repeat that is counted; ${m.period} bp long, so period = ${m.period}`},
+    {label: "5&prime; anchor", value: m.f5,
+     note: `${m.f5.length} bp; marks where the STR region starts`},
+    {label: "3&prime; anchor", value: m.f3,
+     note: `${m.f3.length} bp; marks where it ends`},
+    {label: 'Offset',      value: `${m.offset} bp`,
+     note: m.offset === 0
+       ? 'the region between the anchors is pure repeat — nothing to subtract'
+       : `${m.offset} bp inside the region are not part of the counted repeat ` +
+         '(fixed flanking bases and interruptions). Constant for this marker.'},
+    {label: 'Found on',    value: strand, note: mm},
+  ], 'tip-wide tip-below tip-start');
+}
+
+/* How the number was arrived at: region = offset + period × allele. This is the
+ * whole of a CE call, and it is worth being able to see it, because CE is a
+ * length measurement and nothing more. */
+function alleleTip(seq, hit) {
+  const m   = hit.marker;
+  const sum = `${m.offset} + ${m.period}&times;${hit.repeats}` +
+              (hit.remainder ? ` + ${hit.remainder}` : '');
+
+  const rows = [
+    {label: 'CE allele', value: alleleText(hit),
+     note: hit.remainder
+       ? `${hit.repeats} whole ${m.motif} repeats plus a partial one of ${hit.remainder} bp — ` +
+         `the ".${hit.remainder}" of a microvariant`
+       : `${hit.repeats} whole ${m.motif} repeats, with no partial repeat left over`},
+    {label: 'STR region', value: `${hit.regionLen} bp`,
+     note: 'the sequence lying between the two anchors — this is what is measured'},
+    {label: 'Derivation',
+     value: `<span class="tip-eq">${hit.regionLen} = ${sum}</span>`,
+     note: `region = offset + period &times; allele, so the allele is just ` +
+           `(${hit.regionLen} &minus; ${m.offset}) &divide; ${m.period}` +
+           (hit.remainder ? `, with ${hit.remainder} bp remaining` : ' exactly')},
+    {label: 'Sequence', value: `${seq.length} bp`,
+     note: 'the whole input, anchors and outer flanks included — longer than the region'},
+  ];
+  return makeTip(rows, 'tip-wide tip-below tip-start');
+}
+
+/* The CE row of a result card. The marker chip and the allele carry the working
+ * on hover — anchors, offset, period, and the arithmetic behind the call — so
+ * the row itself stays short. The sequence length stays on the row, marker or
+ * not: it is what separates iso-alleles at a glance, since two sequences can
+ * share a CE allele and still differ in their brackets. */
 function buildCeRow(seq, hit) {
   const len = `<span class="ce-meta">${seq.length} bp</span>`;
   if (!hit)
@@ -1179,13 +1289,9 @@ function buildCeRow(seq, hit) {
             <span class="ce-meta">an anchor matches in more than one place, so the
             STR region has no single length</span>${len}</div>`;
 
-  const m = hit.marker;
-  const sum = `${m.offset} + ${m.period}×${hit.repeats}` +
-              (hit.remainder ? ` + ${hit.remainder}` : '');
   return `<div class="ce-row">
-    <span class="ce-marker">${m.name}</span>
-    <span class="ce-allele">CE ${alleleText(hit)}</span>
-    <span class="ce-meta">region ${hit.regionLen} bp = ${sum}</span>
+    <span class="ce-marker has-tip">${hit.marker.name}${markerTip(hit)}</span>
+    <span class="ce-allele has-tip">CE ${alleleText(hit)}${alleleTip(seq, hit)}</span>
     ${len}
     ${hit.strand === '-' ? '<span class="ce-meta">(reverse strand)</span>' : ''}
   </div>`;
