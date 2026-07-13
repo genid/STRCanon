@@ -161,8 +161,8 @@ The tool declines to guess in two situations, and says which:
 
 ### The panel
 
-The bundled panel is **47 loci — 25 autosomal, 5 X-STR and 17 Y-STR** — covering
-the CODIS core, Penta D/E, and the X and Y markers of the common kits. Its
+The bundled panel is **50 loci — 26 autosomal, 5 X-STR and 19 Y-STR** — covering
+the CODIS core, SE33, Penta D/E, and the X and Y markers of the common kits. Its
 anchors and offsets were fitted to [NIST STRSeq](https://strseq.nist.gov/)
 (BioProject PRJNA380127), the public catalogue of sequenced STR alleles.
 
@@ -177,13 +177,12 @@ and is rejected. Nothing is taken on trust — a locus is admitted only if its o
 records agree.
 
 Run blind over all 2578 STRSeq records — the panel is given the sequence and
-nothing else, and must pick the locus itself. Of those, 1836 belong to a locus
-the panel carries:
+nothing else, and must pick the locus itself:
 
 | | |
 | --- | --- |
-| called | **1555** — every one at the **right locus** with the **published allele** |
-| declined | 280 unanchorable (too little flank), 1 ambiguous (the duplication) |
+| called | **1657** — every one at the **right locus** with the **published allele** |
+| declined | 538 unanchorable (too little flank), 1 ambiguous (the duplication) |
 | mis-assigned | **0** |
 | wrong allele | **0** |
 
@@ -198,8 +197,17 @@ flank. The panel's anchors therefore sit as close to the repeat as they can
 while staying unambiguous; anchors placed further out (as read-based tools use,
 since they see whole amplicons) fall outside that range and are simply absent.
 
-Some loci are deliberately **not** in the panel. SE33, DXS10135, DYS458, D4S2408
-and Y-GATA-H4 derive a consistent offset but their anchors reach only a small
+**SE33 is the instructive case.** Its anchors sit in the true flanking sequence,
+so it fires on any sequence carrying ~20 bp of real flank — an amplicon, a read,
+a genomic slice — but declines on the ISFG-trimmed STRSeq records, only 8 of
+which retain that flank. Anchors cut from *inside* the array instead would reach
+245 of its 266 records, and were rejected: SE33's 3′ end is itself `CTTT`-repeat
+-like, so such an anchor slides under the 1-mismatch budget when the constant
+tail is absent, and mis-calls MH232920.1 as 15 when it is a 31. Coverage of a
+reference catalogue is not worth a wrong CE allele.
+
+Some loci are deliberately **not** in the panel. DXS10135, DYS458, D4S2408 and
+Y-GATA-H4 derive a consistent offset but their anchors reach only a small
 fraction of their own records, so they would almost never fire; DYS385a/b is a
 two-copy locus, for which a single length call is not well defined.
 

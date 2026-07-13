@@ -1165,8 +1165,8 @@ function buildHammingMatrices(canonicals) {
  * anchor pair is pulled in as close to the repeat as it can go while staying
  * unambiguous, and is kept only if it yields ONE offset consistent across every
  * record it covers. Run blind over all 2578 STRSeq records the panel reproduces
- * the published length-based allele for all 1555 it can place, and mis-assigns
- * none. 25 autosomal, 5 X, 17 Y. Keep in step with str_markers.py.
+ * the published length-based allele for all 1657 it can place, and mis-assigns
+ * none. 26 autosomal, 5 X, 19 Y. Keep in step with str_markers.py.
  */
 const MARKER_PANEL = [
   // ── AUTOSOMAL ─────────────────────────────────────────────────
@@ -1192,6 +1192,7 @@ const MARKER_PANEL = [
   {name:'FGA', type:'AUTOSOMAL', f5:'CAAAAAAGAAAGGAAGAAAG', f3:'TAGCTTGTAAATATGC', motif:'AAAG', period:4, offset:0},
   {name:'PentaD', type:'AUTOSOMAL', f5:'ATCTCAAGAAAGAAAAAAAA', f3:'AAGGGGAAAAAAAGAGAATC', motif:'TCTTT', period:5, offset:8},
   {name:'PentaE', type:'AUTOSOMAL', f5:'AGAAAACTCCTTACAA', f3:'GAGACTGAGTCTTGCTCAGT', motif:'TCTTT', period:5, offset:3},
+  {name:'SE33', type:'AUTOSOMAL', f5:'ACTTGCTCTTTCTTTCCTTC', f3:'TGACGGAGTTTCACTCTTGT', motif:'AAAG', period:4, offset:112},
   {name:'TH01', type:'AUTOSOMAL', f5:'AGGGAACACAGACTCCATGG', f3:'GGGAAATAAGGGAGGAACAG', motif:'AATG', period:4, offset:3},
   {name:'TPOX', type:'AUTOSOMAL', f5:'GGCACTTAGGGAACCCTCAC', f3:'TTTGGGCAAATAAACGCT', motif:'AATG', period:4, offset:2},
   {name:'vWA', type:'AUTOSOMAL', f5:'CATAGGATGGATGGATAGAT', f3:'AGATCAATCCAAGTCACATA', motif:'ACAG', period:4, offset:0},
@@ -1202,8 +1203,10 @@ const MARKER_PANEL = [
   {name:'DXS8378', type:'X', f5:'AAAAAATAAATAAATAAAAT', f3:'TGACCTGCCAGGAGCAGGGG', motif:'ATAG', period:4, offset:0},
   {name:'HPRTB', type:'X', f5:'CTTTGTCTCTATCTCTATCT', f3:'AAGCAAATTCATGCCCTTCT', motif:'TAGA', period:4, offset:11},
   // ── Y ─────────────────────────────────────────────────────────
+  {name:'DYF387S1', type:'Y', f5:'GAAGAAAGAGAAAA', f3:'ATAAAAAAAACTGTGGTA', motif:'AAGG', period:4, offset:3},
   {name:'DYS19', type:'Y', f5:'GGTTAAGGAGAGTGTCACTA', f3:'AAACACTATATATATATAAC', motif:'TCTA', period:4, offset:6},
   {name:'DYS389II', type:'Y', f5:'GATAGATTGATAGAGGGAGG', f3:'ACAGACAGACACACACATAG', motif:'TAGA', period:4, offset:41},
+  {name:'DYS390', type:'Y', f5:'GTATACTCAGAAACAAGGAA', f3:'TAGATAGAATATATTATGGG', motif:'GATA', period:4, offset:14},
   {name:'DYS391', type:'Y', f5:'TATCTGTCTGTCTG', f3:'GCCTATCTGCCTGCCTACCT', motif:'TCTA', period:4, offset:3},
   {name:'DYS392', type:'Y', f5:'ACCAATCCCATTCCTTAGTA', f3:'ATAAATGGTGATACAAGAAA', motif:'TAT', period:3, offset:2},
   {name:'DYS437', type:'Y', f5:'ATGCCCATCCGG', f3:'ATCATCTGTGAATGACAGGG', motif:'TCTA', period:4, offset:75},

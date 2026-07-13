@@ -130,16 +130,16 @@ class TestAlleleArithmetic(unittest.TestCase):
 class TestPanel(unittest.TestCase):
 
     def test_bundled_panel_parses_and_covers_autosomal_x_and_y(self):
-        self.assertEqual(len(M.DEFAULT_PANEL), 47)
+        self.assertEqual(len(M.DEFAULT_PANEL), 50)
         names = {m.name for m in M.DEFAULT_PANEL}
         for expected in ('TH01', 'TPOX', 'CSF1PO', 'FGA', 'vWA', 'D21S11',
-                         'PentaD', 'PentaE',            # extra autosomal
+                         'PentaD', 'PentaE', 'SE33',    # extra autosomal
                          'DXS7132', 'HPRTB',            # X
-                         'DYS391', 'DYS438'):           # Y
+                         'DYS391', 'DYS438', 'DYS390'): # Y
             self.assertIn(expected, names)
 
         counts = Counter(m.mtype for m in M.DEFAULT_PANEL)
-        self.assertEqual(counts, Counter({'AUTOSOMAL': 25, 'X': 5, 'Y': 17}))
+        self.assertEqual(counts, Counter({'AUTOSOMAL': 26, 'X': 5, 'Y': 19}))
 
     def test_anchors_are_dna_and_periods_sane(self):
         for m in M.DEFAULT_PANEL:
