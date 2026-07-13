@@ -11,6 +11,7 @@ in str_markers.PANEL_TSV reproduce the published allele for every one of the
 """
 
 import unittest
+from collections import Counter
 
 import strcanon as S
 import str_markers as M
@@ -128,11 +129,17 @@ class TestAlleleArithmetic(unittest.TestCase):
 
 class TestPanel(unittest.TestCase):
 
-    def test_bundled_panel_parses_and_is_the_codis_core(self):
-        self.assertEqual(len(M.DEFAULT_PANEL), 20)
+    def test_bundled_panel_parses_and_covers_autosomal_x_and_y(self):
+        self.assertEqual(len(M.DEFAULT_PANEL), 47)
         names = {m.name for m in M.DEFAULT_PANEL}
-        for expected in ('TH01', 'TPOX', 'CSF1PO', 'FGA', 'vWA', 'D21S11'):
+        for expected in ('TH01', 'TPOX', 'CSF1PO', 'FGA', 'vWA', 'D21S11',
+                         'PentaD', 'PentaE',            # extra autosomal
+                         'DXS7132', 'HPRTB',            # X
+                         'DYS391', 'DYS438'):           # Y
             self.assertIn(expected, names)
+
+        counts = Counter(m.mtype for m in M.DEFAULT_PANEL)
+        self.assertEqual(counts, Counter({'AUTOSOMAL': 25, 'X': 5, 'Y': 17}))
 
     def test_anchors_are_dna_and_periods_sane(self):
         for m in M.DEFAULT_PANEL:

@@ -1161,31 +1161,64 @@ function buildHammingMatrices(canonicals) {
  * repeat count, the remainder is the ".n" of a microvariant (TH01 9.3 = 9 whole
  * AATG repeats + a 3-base ATG).
  *
- * Anchors and offsets are fitted to NIST STRSeq (BioProject PRJNA380127) and
- * reproduce the published length-based allele for every one of its 1208 records
- * they can be placed in. Keep in step with str_markers.py.
+ * Anchors and offsets are fitted to NIST STRSeq (BioProject PRJNA380127): each
+ * anchor pair is pulled in as close to the repeat as it can go while staying
+ * unambiguous, and is kept only if it yields ONE offset consistent across every
+ * record it covers. Run blind over all 2578 STRSeq records the panel reproduces
+ * the published length-based allele for all 1555 it can place, and mis-assigns
+ * none. 25 autosomal, 5 X, 17 Y. Keep in step with str_markers.py.
  */
 const MARKER_PANEL = [
+  // ── AUTOSOMAL ─────────────────────────────────────────────────
   {name:'CSF1PO', type:'AUTOSOMAL', f5:'GACCCTGTTCTAAGTACTTC', f3:'TCTATCTATGAAGGCAGTTA', motif:'AGAT', period:4, offset:15},
   {name:'D10S1248', type:'AUTOSOMAL', f5:'TTGAACAAATGAGTGAGT', f3:'ATGAAGACAATACAACCAGA', motif:'AAGG', period:4, offset:0},
+  {name:'D12ATA63', type:'AUTOSOMAL', f5:'GCAATTTAAAAA', f3:'CTTGAGACAGGGTCTCGCTC', motif:'TAT', period:3, offset:2},
   {name:'D12S391', type:'AUTOSOMAL', f5:'ATCAATGGATGCATAGGTAG', f3:'GAGGGGATTTATTAGAGGAA', motif:'ACAG', period:4, offset:0},
   {name:'D13S317', type:'AUTOSOMAL', f5:'ATCTGTATTTACAAATACAT', f3:'TCTGTCTGTCTTTTTGGG', motif:'AGAT', period:4, offset:21},
   {name:'D16S539', type:'AUTOSOMAL', f5:'TACAGACAGACAGACAGGTG', f3:'TCATTGAAAGACAAAACAGA', motif:'AGAT', period:4, offset:0},
   {name:'D18S51', type:'AUTOSOMAL', f5:'ACAAATTGAGACCTTGTCTC', f3:'AAGAGAGAGGAAAGAAAGAG', motif:'AAAG', period:4, offset:1},
   {name:'D19S433', type:'AUTOSOMAL', f5:'ATAAAAATCTTCTCTCTT', f3:'TTTTCCTTCAACAGAATCTT', motif:'AAGG', period:4, offset:11},
   {name:'D1S1656', type:'AUTOSOMAL', f5:'ACAATTAAACACACACACAC', f3:'ATCATACAGTTGACCCTTGA', motif:'AGAT', period:4, offset:0},
+  {name:'D20S482', type:'AUTOSOMAL', f5:'GACACCGAACCAATAA', f3:'GATTTATTATAGGAATTGAT', motif:'AGAT', period:4, offset:4},
   {name:'D21S11', type:'AUTOSOMAL', f5:'ATTCCCCAAGTGAATTGCCT', f3:'GTCTATCTACCTCCTATTAG', motif:'ACAG', period:4, offset:26},
   {name:'D22S1045', type:'AUTOSOMAL', f5:'CTTATAGCTGCTATGGGGGC', f3:'CTATTATTGTTATAAAAATA', motif:'AAT', period:3, offset:19},
   {name:'D2S1338', type:'AUTOSOMAL', f5:'TGCAGGAGGGAAGGAAGGAC', f3:'TTCTGTTTCCAAATCCACTG', motif:'AAGG', period:4, offset:0},
   {name:'D2S441', type:'AUTOSOMAL', f5:'CCAGGAACTGTGGCTCATCT', f3:'ATCTATCTATATCA', motif:'AGAT', period:4, offset:0},
   {name:'D3S1358', type:'AUTOSOMAL', f5:'AACAGAGGCTTGCATGTATC', f3:'AGACAGGGTCTTGCTC', motif:'AGAT', period:4, offset:0},
   {name:'D5S818', type:'AUTOSOMAL', f5:'TCTGTATCCTTATTTATACC', f3:'TCAAAATATTACGTAAGGAT', motif:'AGAT', period:4, offset:3},
+  {name:'D6S1043', type:'AUTOSOMAL', f5:'GCCACTTCCCATAATAAATC', f3:'GATCTATCAATCTATTGATC', motif:'ATCT', period:4, offset:2},
   {name:'D7S820', type:'AUTOSOMAL', f5:'ATTTAGTGAGATTAAAAAAA', f3:'GTTAGTTCGTTCTAAACTAT', motif:'AGAT', period:4, offset:14},
   {name:'D8S1179', type:'AUTOSOMAL', f5:'TGTGTACATTCG', f3:'TCCCCACAGTGAAAATAATC', motif:'AGAT', period:4, offset:3},
   {name:'FGA', type:'AUTOSOMAL', f5:'CAAAAAAGAAAGGAAGAAAG', f3:'TAGCTTGTAAATATGC', motif:'AAAG', period:4, offset:0},
+  {name:'PentaD', type:'AUTOSOMAL', f5:'ATCTCAAGAAAGAAAAAAAA', f3:'AAGGGGAAAAAAAGAGAATC', motif:'TCTTT', period:5, offset:8},
+  {name:'PentaE', type:'AUTOSOMAL', f5:'AGAAAACTCCTTACAA', f3:'GAGACTGAGTCTTGCTCAGT', motif:'TCTTT', period:5, offset:3},
   {name:'TH01', type:'AUTOSOMAL', f5:'AGGGAACACAGACTCCATGG', f3:'GGGAAATAAGGGAGGAACAG', motif:'AATG', period:4, offset:3},
   {name:'TPOX', type:'AUTOSOMAL', f5:'GGCACTTAGGGAACCCTCAC', f3:'TTTGGGCAAATAAACGCT', motif:'AATG', period:4, offset:2},
   {name:'vWA', type:'AUTOSOMAL', f5:'CATAGGATGGATGGATAGAT', f3:'AGATCAATCCAAGTCACATA', motif:'ACAG', period:4, offset:0},
+  // ── X ─────────────────────────────────────────────────────────
+  {name:'DXS10074', type:'X', f5:'TACACACACAGAGAGAGAGA', f3:'AAGAAAGAAAGGAAGAAAAT', motif:'AAGA', period:4, offset:3},
+  {name:'DXS7132', type:'X', f5:'AACCAATAGGATAGATAGAT', f3:'AGATGAGAGGGGATTTATTA', motif:'TAGA', period:4, offset:0},
+  {name:'DXS7423', type:'X', f5:'CAAATAAATGAATGAGTATG', f3:'GGAGGAAATCTGGG', motif:'TGGA', period:4, offset:11},
+  {name:'DXS8378', type:'X', f5:'AAAAAATAAATAAATAAAAT', f3:'TGACCTGCCAGGAGCAGGGG', motif:'ATAG', period:4, offset:0},
+  {name:'HPRTB', type:'X', f5:'CTTTGTCTCTATCTCTATCT', f3:'AAGCAAATTCATGCCCTTCT', motif:'TAGA', period:4, offset:11},
+  // ── Y ─────────────────────────────────────────────────────────
+  {name:'DYS19', type:'Y', f5:'GGTTAAGGAGAGTGTCACTA', f3:'AAACACTATATATATATAAC', motif:'TCTA', period:4, offset:6},
+  {name:'DYS389II', type:'Y', f5:'GATAGATTGATAGAGGGAGG', f3:'ACAGACAGACACACACATAG', motif:'TAGA', period:4, offset:41},
+  {name:'DYS391', type:'Y', f5:'TATCTGTCTGTCTG', f3:'GCCTATCTGCCTGCCTACCT', motif:'TCTA', period:4, offset:3},
+  {name:'DYS392', type:'Y', f5:'ACCAATCCCATTCCTTAGTA', f3:'ATAAATGGTGATACAAGAAA', motif:'TAT', period:3, offset:2},
+  {name:'DYS437', type:'Y', f5:'ATGCCCATCCGG', f3:'ATCATCTGTGAATGACAGGG', motif:'TCTA', period:4, offset:75},
+  {name:'DYS438', type:'Y', f5:'GTAAACAGTATA', f3:'ATTTGAAATGGAGTTTCACT', motif:'TTTTC', period:5, offset:1},
+  {name:'DYS439', type:'Y', f5:'AAGGTGATAGATATAC', f3:'AAGTATAAGTAAAGAGATGA', motif:'TATC', period:4, offset:47},
+  {name:'DYS448', type:'Y', f5:'AGATAGAGACATGGATAA', f3:'GGTAAAGATAGAGATAAA', motif:'AGAGAT', period:6, offset:47},
+  {name:'DYS456', type:'Y', f5:'TGGGACCTTGTGATAATGTA', f3:'TTCCATTAGTTCTGTCCCTC', motif:'AGAT', period:4, offset:1},
+  {name:'DYS481', type:'Y', f5:'CTAACGCTGTTCAGCATGCT', f3:'TTTTGAGTCTTG', motif:'CTT', period:3, offset:1},
+  {name:'DYS505', type:'Y', f5:'CTTTCTCTGTTCTTTTTCTC', f3:'TTTCCCTCCTTCTTTCTCTT', motif:'TCCT', period:4, offset:2},
+  {name:'DYS533', type:'Y', f5:'CATCTTTCTAGCTAGCTATC', f3:'ATCTATCATCTTCTATTGTT', motif:'AGAT', period:4, offset:3},
+  {name:'DYS549', type:'Y', f5:'TGATAGATGATTAGAAAGAT', f3:'AAAAATCTACATAAACAAAA', motif:'TATC', period:4, offset:2},
+  {name:'DYS576', type:'Y', f5:'CAAGACCTCATCTCTGAATA', f3:'AAGCCAAGACAAATACGCTT', motif:'CTTT', period:4, offset:3},
+  {name:'DYS612', type:'Y', f5:'TTGCCTCCTCCTCCTCCTCT', f3:'TTTTCTTTTGCCTTCCCTCA', motif:'TCT', period:3, offset:0},
+  {name:'DYS635', type:'Y', f5:'TGAATGGATAAAGAAAATGT', f3:'GATTCTATGCAAAGTGAGAA', motif:'TAGA', period:4, offset:2},
+  {name:'DYS643', type:'Y', f5:'GCCTGGTTAAACTACTGTGC', f3:'CTTTTTAAAACTTTTTACTT', motif:'CTTTT', period:5, offset:4},
 ];
 
 const FLANK_MISMATCHES = 1;   // flanking SNPs are common; allow one per anchor
@@ -1284,8 +1317,10 @@ function markerTip(hit) {
     : `${hit.mismatches} mismatch${hit.mismatches > 1 ? 'es' : ''} across the two anchors ` +
       `(up to ${FLANK_MISMATCHES} per anchor is allowed — flanking SNPs are common)`;
 
+  const typeLabel = {AUTOSOMAL: 'autosomal', X: 'X-STR', Y: 'Y-STR'}[m.type] || m.type;
+
   return makeTip([
-    {label: 'Marker',      value: `${m.name} &nbsp;<span style="color:#7a7a9a">${m.type.toLowerCase()}</span>`},
+    {label: 'Marker',      value: `${m.name} &nbsp;<span style="color:#7a7a9a">${typeLabel}</span>`},
     {label: 'Period',      value: `${m.period} bp`,
      note: 'the step the region length is divided into — the size of one allele increment'},
     {label: 'Expected motif', value: `${m.motif}`,

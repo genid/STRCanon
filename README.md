@@ -161,27 +161,51 @@ The tool declines to guess in two situations, and says which:
 
 ### The panel
 
-The bundled panel is the **20 CODIS core loci**. Its anchors and offsets were
-fitted to [NIST STRSeq](https://strseq.nist.gov/) (BioProject PRJNA380127), the
-public catalogue of sequenced STR alleles, and validated against all 1208 of its
-CODIS records:
+The bundled panel is **47 loci — 25 autosomal, 5 X-STR and 17 Y-STR** — covering
+the CODIS core, Penta D/E, and the X and Y markers of the common kits. Its
+anchors and offsets were fitted to [NIST STRSeq](https://strseq.nist.gov/)
+(BioProject PRJNA380127), the public catalogue of sequenced STR alleles.
+
+Each anchor pair is pulled in as close to the repeat as it can go while staying
+unambiguous, and is kept only if
+
+    offset = region_len - (period × repeats + remainder)
+
+comes out **identical for every record it covers**. A pair that brackets the
+variable region and nothing else gives one offset; any other pair gives several,
+and is rejected. Nothing is taken on trust — a locus is admitted only if its own
+records agree.
+
+Run blind over all 2578 STRSeq records — the panel is given the sequence and
+nothing else, and must pick the locus itself. Of those, 1836 belong to a locus
+the panel carries:
 
 | | |
 | --- | --- |
-| locus assignment | **1208 / 1208** correct, no cross-locus collisions |
-| CE allele, where called | **934 / 934** match the published length-based allele |
-| no call | 273 unanchorable (too little flank), 1 ambiguous (the duplication) |
+| called | **1555** — every one at the **right locus** with the **published allele** |
+| declined | 280 unanchorable (too little flank), 1 ambiguous (the duplication) |
+| mis-assigned | **0** |
+| wrong allele | **0** |
 
-Nothing is called wrong; what cannot be determined is declined. The 273
-unanchorable records are a property of the data, not the method — STRSeq records
-are trimmed to the ISFG reported range, and many retain under 12 bp of flank.
-The panel's anchors therefore sit as close to the repeat as they can while
-staying unambiguous; anchors placed further out (as read-based tools use, since
-they see whole amplicons) fall outside that range and are simply absent.
+Nothing is called wrong; what cannot be determined is declined. That matters
+more once X and Y markers are in the panel, because several of their anchors are
+themselves repeat-like (DYS391's is `TATCTGTCTGTCTG`) and could in principle
+match inside another locus's array — the blind run is what shows they do not.
+
+The unanchorable records are a property of the data, not the method — STRSeq
+records are trimmed to the ISFG reported range, and many retain under 12 bp of
+flank. The panel's anchors therefore sit as close to the repeat as they can
+while staying unambiguous; anchors placed further out (as read-based tools use,
+since they see whole amplicons) fall outside that range and are simply absent.
+
+Some loci are deliberately **not** in the panel. SE33, DXS10135, DYS458, D4S2408
+and Y-GATA-H4 derive a consistent offset but their anchors reach only a small
+fraction of their own records, so they would almost never fire; DYS385a/b is a
+two-copy locus, for which a single length call is not well defined.
 
 Panels are swappable. `--markers FILE` takes the same 7-column layout, which is
 also STRait Razor's locus-config format, so a lab's existing kit config —
-ForenSeq, PowerSeq, Y-STR, SE33, anything not in the CODIS core — can be passed
+ForenSeq, PowerSeq, SE33, anything not in the bundled panel — can be passed
 in directly:
 
 ```bash
