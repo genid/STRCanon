@@ -161,10 +161,12 @@ The tool declines to guess in two situations, and says which:
 
 ### The panel
 
-The bundled panel is **50 loci — 26 autosomal, 5 X-STR and 19 Y-STR** — covering
-the CODIS core, SE33, Penta D/E, and the X and Y markers of the common kits. Its
-anchors and offsets were fitted to [NIST STRSeq](https://strseq.nist.gov/)
-(BioProject PRJNA380127), the public catalogue of sequenced STR alleles.
+The bundled panel is **63 loci — 26 autosomal, 5 X-STR and 32 Y-STR** — covering
+the CODIS core, SE33, Penta D/E, the X and Y markers of the common kits, and 13
+rapidly-mutating Y-STRs from the RMplex panel. Its anchors and offsets were
+fitted to sequenced alleles: the 51 CODIS/X/Y loci to
+[NIST STRSeq](https://strseq.nist.gov/) (BioProject PRJNA380127), the 12 RM
+Y-STRs to the RMplex control-sample sequences (see below).
 
 Each anchor pair is pulled in as close to the repeat as it can go while staying
 unambiguous, and is kept only if
@@ -210,6 +212,35 @@ Some loci are deliberately **not** in the panel. DXS10135, DYS458, D4S2408 and
 Y-GATA-H4 derive a consistent offset but their anchors reach only a small
 fraction of their own records, so they would almost never fire; DYS385a/b is a
 two-copy locus, for which a single length call is not well defined.
+
+#### The RMplex RM Y-STRs
+
+STRSeq has almost no sequences for the rapidly-mutating Y-STRs used to separate
+close paternal relatives, so those markers are fitted to a different source: the
+RMplex control-sample sequences (007, 2800M, NA24385/HG002, NA24631/HG005) with
+their published CE calls. The method is the same — anchors in the conserved
+flank, one offset consistent across every sequence — but the evidence per marker
+is three control alleles rather than the tens to hundreds STRSeq provides, so the
+period is pinned from fewer points. Two independent checks guard against a
+coincidental fit: the fitted period must equal the array's actual repeat period
+(it does for all 12), and where a marker also appears in STRSeq the anchors are
+cross-checked against those records — the RMplex-derived DYS576 anchors call
+**12/12** STRSeq DYS576 records correctly. Blind over all supplied RMplex
+sequences the 12 additions call **36/36** at the right marker with the published
+allele.
+
+Twelve RM Y-STRs are added: DYS518, DYS526b, DYS547, DYS626, DYS711, DYS712,
+DYS713, DYS1003, DYS1007, DYS1010, DYS1012 and DYF403S1b (DYS570, DYS576 and
+DYS612 were already in the panel from STRSeq).
+
+The **multi-copy** RMplex loci — DYF387S1, DYF399S1, DYF1000, DYF1001, DYF1002,
+DYF403S1a, DYF404S1, DYR88, DYS724 — are **not** added. Each amplifies several
+near-identical genomic copies that share their flanking sequence, so one copy's
+anchors match inside another's (DYF403S1a copy B resolves to copy A); a single
+length call cannot separate them without distinguishing the copies, which
+flanking-anchor CE cannot do. DYS442, DYS449, DYS627, DYF393S1 and DYS1005 could
+not be fitted from the three supplied sequenced controls (too little allele
+diversity, or the array runs to the amplicon edge).
 
 Panels are swappable. `--markers FILE` takes the same 7-column layout, which is
 also STRait Razor's locus-config format, so a lab's existing kit config —

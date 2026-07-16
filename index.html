@@ -1170,12 +1170,14 @@ function buildHammingMatrices(canonicals) {
  * repeat count, the remainder is the ".n" of a microvariant (TH01 9.3 = 9 whole
  * AATG repeats + a 3-base ATG).
  *
- * Anchors and offsets are fitted to NIST STRSeq (BioProject PRJNA380127): each
- * anchor pair is pulled in as close to the repeat as it can go while staying
- * unambiguous, and is kept only if it yields ONE offset consistent across every
- * record it covers. Run blind over all 2578 STRSeq records the panel reproduces
- * the published length-based allele for all 1679 it can place, and mis-assigns
- * none. 26 autosomal, 5 X, 20 Y. Keep in step with str_markers.py.
+ * Anchors and offsets are fitted to sequenced alleles: each anchor pair is
+ * pulled in as close to the repeat as it can go while staying unambiguous, and
+ * is kept only if it yields ONE offset consistent across every sequence it
+ * covers. The 51 CODIS/X/Y loci are fitted to NIST STRSeq (BioProject
+ * PRJNA380127) -- blind over all 2578 records they reproduce the published
+ * allele for the 1679 they can place, mis-assigning none. The 12 RM Y-STRs are
+ * fitted to the RMplex control-sample sequences; see README.
+ * 26 autosomal, 5 X, 32 Y. Keep in step with str_markers.py.
  */
 const MARKER_PANEL = [
   // ── AUTOSOMAL ─────────────────────────────────────────────────
@@ -1213,6 +1215,11 @@ const MARKER_PANEL = [
   {name:'HPRTB', type:'X', f5:'CTTTGTCTCTATCTCTATCT', f3:'AAGCAAATTCATGCCCTTCT', motif:'TAGA', period:4, offset:11},
   // ── Y ─────────────────────────────────────────────────────────
   {name:'DYF387S1', type:'Y', f5:'GAAGAAAGAGAAAA', f3:'ATAAAAAAAACTGTGGTA', motif:'AAGG', period:4, offset:3},
+  {name:'DYF403S1b', type:'Y', f5:'AACAGAGCAGGATTCCATCT', f3:'CTTACGATTTTGCTCATTAT', motif:'AAAG', period:4, offset:196},
+  {name:'DYS1003', type:'Y', f5:'ATCTCAAAAGAAGAAAGAAG', f3:'CAGATGTGGTTCCAAGCCAC', motif:'AAGA', period:4, offset:96},
+  {name:'DYS1007', type:'Y', f5:'ACATGGTGAGACCCTGTCTG', f3:'TAAGGAGGGAAGGAGG', motif:'AAAG', period:4, offset:61},
+  {name:'DYS1010', type:'Y', f5:'TGAATCCTGGACAAGTGAGA', f3:'GGAAAGAAAGGAAGAAAGAA', motif:'AAAG', period:4, offset:215},
+  {name:'DYS1012', type:'Y', f5:'GCAAGACTCCATCTCC', f3:'TTAGTTAATAATGGCATTAC', motif:'GAAA', period:4, offset:63},
   {name:'DYS19', type:'Y', f5:'GGTTAAGGAGAGTGTCACTA', f3:'AAACACTATATATATATAAC', motif:'TCTA', period:4, offset:6},
   {name:'DYS389II', type:'Y', f5:'GATAGATTGATAGAGGGAGG', f3:'ACAGACAGACACACACATAG', motif:'TAGA', period:4, offset:41},
   {name:'DYS390', type:'Y', f5:'GTATACTCAGAAACAAGGAA', f3:'TAGATAGAATATATTATGGG', motif:'GATA', period:4, offset:14},
@@ -1225,13 +1232,20 @@ const MARKER_PANEL = [
   {name:'DYS456', type:'Y', f5:'TGGGACCTTGTGATAATGTA', f3:'TTCCATTAGTTCTGTCCCTC', motif:'AGAT', period:4, offset:1},
   {name:'DYS481', type:'Y', f5:'CTAACGCTGTTCAGCATGCT', f3:'TTTTGAGTCTTG', motif:'CTT', period:3, offset:1},
   {name:'DYS505', type:'Y', f5:'CTTTCTCTGTTCTTTTTCTC', f3:'TTTCCCTCCTTCTTTCTCTT', motif:'TCCT', period:4, offset:2},
+  {name:'DYS518', type:'Y', f5:'ACAAGTGAAACTGCTTCTCG', f3:'GGGAAAAGAAGGAAAGAAAA', motif:'AAGA', period:4, offset:53},
+  {name:'DYS526b', type:'Y', f5:'ACCTTTACTTATTTTCTTCC', f3:'TCTTTACCTTCTGGCGAAGT', motif:'TCCT', period:4, offset:159},
   {name:'DYS533', type:'Y', f5:'CATCTTTCTAGCTAGCTATC', f3:'ATCTATCATCTTCTATTGTT', motif:'AGAT', period:4, offset:3},
+  {name:'DYS547', type:'Y', f5:'CTGCAAAATACACAATCTTA', f3:'GAGACACGTTTATGCTCTGT', motif:'TTTC', period:4, offset:191},
   {name:'DYS549', type:'Y', f5:'TGATAGATGATTAGAAAGAT', f3:'AAAAATCTACATAAACAAAA', motif:'TATC', period:4, offset:2},
   {name:'DYS570', type:'Y', f5:'TGGCTGTGTCCTCCAAGTTC', f3:'TTTTTGTAGATAGG', motif:'TTTC', period:4, offset:2},
   {name:'DYS576', type:'Y', f5:'CAAGACCTCATCTCTGAATA', f3:'AAGCCAAGACAAATACGCTT', motif:'CTTT', period:4, offset:3},
   {name:'DYS612', type:'Y', f5:'TTGCCTCCTCCTCCTCCTCT', f3:'TTTTCTTTTGCCTTCCCTCA', motif:'TCT', period:3, offset:0},
+  {name:'DYS626', type:'Y', f5:'ACCTGGGAGACAGATCTTGC', f3:'AGGAATCATTGAGTTTCAAT', motif:'AAAG', period:4, offset:266},
   {name:'DYS635', type:'Y', f5:'TGAATGGATAAAGAAAATGT', f3:'GATTCTATGCAAAGTGAGAA', motif:'TAGA', period:4, offset:2},
   {name:'DYS643', type:'Y', f5:'GCCTGGTTAAACTACTGTGC', f3:'CTTTTTAAAACTTTTTACTT', motif:'CTTTT', period:5, offset:4},
+  {name:'DYS711', type:'Y', f5:'CAGCACCTAGGTTAAGTGAC', f3:'GTTTTGAGACAGAGTCTTGC', motif:'TTC', period:3, offset:79},
+  {name:'DYS712', type:'Y', f5:'ACAGCCTGGGTAACAGTGTG', f3:'GATGTCATTTGTTTATATCA', motif:'AGAT', period:4, offset:2},
+  {name:'DYS713', type:'Y', f5:'TGATGGATTATGTTATTACA', f3:'AAGATGGAGTCTGTCACCCA', motif:'TCTT', period:4, offset:136},
 ];
 
 const FLANK_MISMATCHES = 1;   // flanking SNPs are common; allow one per anchor
