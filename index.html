@@ -129,9 +129,18 @@
     font-size: 1rem;
     color: #111;
     margin-bottom: 1rem;
-    word-break: break-all;
     line-height: 1.6;
   }
+
+  /* Wrap only between tokens, never inside one: a long nomenclature must not
+   * split a motif like [~AGAT>3]6 across two lines. Each top-level token is
+   * kept whole (nowrap) and the tokens are joined by <wbr> break opportunities,
+   * so the line breaks fall exactly at token boundaries. */
+  .nomenclature > span { white-space: nowrap; }
+
+  /* A literal gap sequence, (ACGT…), is raw DNA rather than a motif and can be
+   * arbitrarily long, so let it wrap internally instead of overflowing. */
+  .nomenclature > span.nom-lit { white-space: normal; word-break: break-all; }
 
   pre.visual {
     font-family: 'Courier New', monospace;
@@ -901,7 +910,7 @@ function buildNomenclature(seq, stretches, hideN, fullSeqGaps, stripEndsN, color
         const gapSeq = seq.slice(cursor, s.start);
         if (fullSeqGaps) {
           result.push(
-            `<span class="has-tip">(${gapSeq})${makeTip([
+            `<span class="has-tip nom-lit">(${gapSeq})${makeTip([
               {label: 'Gap', value: `${gap} bp non-repetitive`},
             ])}</span>`
           );
@@ -959,7 +968,7 @@ function buildNomenclature(seq, stretches, hideN, fullSeqGaps, stripEndsN, color
       const tailLen = tailSeq.length;
       if (fullSeqGaps) {
         result.push(
-          `<span class="has-tip">(${tailSeq})${makeTip([
+          `<span class="has-tip nom-lit">(${tailSeq})${makeTip([
             {label: 'Gap', value: `${tailLen} bp non-repetitive`},
           ])}</span>`
         );
@@ -974,7 +983,7 @@ function buildNomenclature(seq, stretches, hideN, fullSeqGaps, stripEndsN, color
     }
   }
 
-  return {nomenclature: result.join(''), segments};
+  return {nomenclature: result.join('<wbr>'), segments};
 }
 
 /**
@@ -1165,8 +1174,8 @@ function buildHammingMatrices(canonicals) {
  * anchor pair is pulled in as close to the repeat as it can go while staying
  * unambiguous, and is kept only if it yields ONE offset consistent across every
  * record it covers. Run blind over all 2578 STRSeq records the panel reproduces
- * the published length-based allele for all 1657 it can place, and mis-assigns
- * none. 26 autosomal, 5 X, 19 Y. Keep in step with str_markers.py.
+ * the published length-based allele for all 1679 it can place, and mis-assigns
+ * none. 26 autosomal, 5 X, 20 Y. Keep in step with str_markers.py.
  */
 const MARKER_PANEL = [
   // ── AUTOSOMAL ─────────────────────────────────────────────────
@@ -1218,6 +1227,7 @@ const MARKER_PANEL = [
   {name:'DYS505', type:'Y', f5:'CTTTCTCTGTTCTTTTTCTC', f3:'TTTCCCTCCTTCTTTCTCTT', motif:'TCCT', period:4, offset:2},
   {name:'DYS533', type:'Y', f5:'CATCTTTCTAGCTAGCTATC', f3:'ATCTATCATCTTCTATTGTT', motif:'AGAT', period:4, offset:3},
   {name:'DYS549', type:'Y', f5:'TGATAGATGATTAGAAAGAT', f3:'AAAAATCTACATAAACAAAA', motif:'TATC', period:4, offset:2},
+  {name:'DYS570', type:'Y', f5:'TGGCTGTGTCCTCCAAGTTC', f3:'TTTTTGTAGATAGG', motif:'TTTC', period:4, offset:2},
   {name:'DYS576', type:'Y', f5:'CAAGACCTCATCTCTGAATA', f3:'AAGCCAAGACAAATACGCTT', motif:'CTTT', period:4, offset:3},
   {name:'DYS612', type:'Y', f5:'TTGCCTCCTCCTCCTCCTCT', f3:'TTTTCTTTTGCCTTCCCTCA', motif:'TCT', period:3, offset:0},
   {name:'DYS635', type:'Y', f5:'TGAATGGATAAAGAAAATGT', f3:'GATTCTATGCAAAGTGAGAA', motif:'TAGA', period:4, offset:2},
@@ -1522,7 +1532,7 @@ function copyNomenclature(btn) {
   const card  = btn.closest('.result-card');
   const el    = card.querySelector('.nomenclature');
   const clone = el.cloneNode(true);
-  clone.querySelectorAll('.tip').forEach(t => t.remove());
+  clone.querySelectorAll('.tip, wbr').forEach(t => t.remove());
   const text  = clone.innerText.trim();
   navigator.clipboard.writeText(text).then(() => {
     btn.textContent = 'Copied!';

@@ -3,7 +3,7 @@
 # region_len = offset + period * allele, measured between flank5 and flank3;
 # so  allele, remainder = divmod(region_len - offset, period).
 #
-# Source: fitted to NIST STRSeq (BioProject PRJNA380127); 26 autosomal, 5 X and 19 Y loci
+# Source: fitted to NIST STRSeq (BioProject PRJNA380127); 26 autosomal, 5 X and 20 Y loci
 # Validate against your own kit before casework. Panels are swappable:
 # `--markers FILE` reads this same layout. Regenerate with:
 #     python str_markers.py --export
@@ -55,6 +55,7 @@ DYS481	Y	CTAACGCTGTTCAGCATGCT	TTTTGAGTCTTG	CTT	3	1
 DYS505	Y	CTTTCTCTGTTCTTTTTCTC	TTTCCCTCCTTCTTTCTCTT	TCCT	4	2
 DYS533	Y	CATCTTTCTAGCTAGCTATC	ATCTATCATCTTCTATTGTT	AGAT	4	3
 DYS549	Y	TGATAGATGATTAGAAAGAT	AAAAATCTACATAAACAAAA	TATC	4	2
+DYS570	Y	TGGCTGTGTCCTCCAAGTTC	TTTTTGTAGATAGG	TTTC	4	2
 DYS576	Y	CAAGACCTCATCTCTGAATA	AAGCCAAGACAAATACGCTT	CTTT	4	3
 DYS612	Y	TTGCCTCCTCCTCCTCCTCT	TTTTCTTTTGCCTTCCCTCA	TCT	3	0
 DYS635	Y	TGAATGGATAAAGAAAATGT	GATTCTATGCAAAGTGAGAA	TAGA	4	2
