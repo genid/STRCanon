@@ -302,7 +302,16 @@ echo TTCTTCTTCTTCTT | strcanon.py                   # -> [~AAG>2]4.2
 strcanon.py --expand '(TGC)[AAG]4[AG]3.1'           # nomenclature -> sequence
 strcanon.py --input alleles.txt --no-ce             # sequence nomenclature only
 strcanon.py --list-markers                          # the forensic marker panel
+strcanon.py --motif GATA TATC CAG GGC               # motif -> canonical + designation
+strcanon.py --list-canonicals                       # the full canonical motif lookup
 ```
+
+`--motif` treats each input token as a motif rather than a sequence and prints,
+per motif, its bare canonical form and the canonical designation with the `>r`
+rotation offset and `~` reverse-complement marker (so the exact input rendering
+is recoverable). A non-primitive motif is reduced to its repeat unit first
+(`ATAT` -> `AT`). `--list-canonicals` prints all 501 canonical motifs with their
+forward and reverse-complement rotations.
 
 Options:
 
@@ -326,6 +335,8 @@ Options:
 | `--marker NAME` | force a single marker instead of searching the whole panel |
 | `--flank-mismatches N` | mismatches tolerated per anchor, for flanking SNPs (default: 1) |
 | `--list-markers` | print the marker panel and exit |
+| `--motif` | treat each input token as a motif and print its canonical form (bare canonical and the `>r`/`~` designation) |
+| `--list-canonicals` | print the full canonical motif lookup (k = 1–6) and exit |
 
 ## Requirements
 

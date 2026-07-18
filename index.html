@@ -103,6 +103,36 @@
   button#run-btn:hover:not(:disabled) { background: #3366e0; }
   button#run-btn:disabled { background: #b0b0b0; cursor: default; }
 
+  button#motif-btn {
+    padding: .5rem 1.4rem; background: #4a7ff5; color: #fff; border: none;
+    border-radius: 6px; font-size: .9rem; font-weight: 600; cursor: pointer;
+    transition: background .15s; margin-bottom: .45rem;
+  }
+  button#motif-btn:hover { background: #3366e0; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: .25rem; margin-bottom: 1.25rem;
+          border-bottom: 2px solid #e5e7eb; }
+  .tab { background: none; border: none; padding: .55rem 1.1rem; font-size: .95rem;
+         font-weight: 600; color: #6b7280; cursor: pointer;
+         border-bottom: 2px solid transparent; margin-bottom: -2px; }
+  .tab:hover { color: #111; }
+  .tab.active { color: #4a7ff5; border-bottom-color: #4a7ff5; }
+  .tab-panel[hidden] { display: none; }
+
+  /* Motif tool + lookup */
+  input[type=text].filter {
+    width: 100%; padding: .55rem .75rem; border: 1px solid #d4d4d4;
+    border-radius: 6px; font-family: 'Courier New', monospace; font-size: .9rem;
+    outline: none; transition: border-color .15s; color: #222;
+  }
+  input[type=text].filter:focus { border-color: #4a7ff5; }
+  .lookup-wrap { max-height: 68vh; overflow-y: auto;
+                 border: 1px solid #eee; border-radius: 6px; }
+  .res-table .mono { font-family: 'Courier New', monospace; }
+  .res-table.lookup thead th { position: sticky; top: 0; z-index: 1; }
+  .lookup-count { padding: .55rem .2rem 0; color: #888; font-size: .8rem; }
+
   #status {
     font-size: .8rem;
     color: #999;
@@ -547,6 +577,13 @@
 <div class="container">
   <h1>STR Nomenclature</h1>
 
+  <div class="tabs">
+    <button class="tab active" data-tab="seq">Sequences</button>
+    <button class="tab" data-tab="motif">Motifs</button>
+    <button class="tab" data-tab="lookup">Lookup table</button>
+  </div>
+
+  <div class="tab-panel" id="panel-seq">
   <div class="card">
     <label class="field-label" for="seq-input">Sequence(s) or nomenclature — one per line</label>
     <textarea id="seq-input" placeholder="AAGAAGAAGAGAGAG&#10;[AAG]3[AG]4&#10;TGCGAGAAGAAGAAGAAGAGAGAGATTCTTCTTCCCCC"></textarea>
@@ -647,6 +684,31 @@
   <div id="results"></div>
   <div id="table-section"></div>
   <div id="matrix-section"></div>
+  </div><!-- #panel-seq -->
+
+  <div class="tab-panel" id="panel-motif" hidden>
+    <div class="card">
+      <label class="field-label" for="motif-input">Motif(s) — one per line, or comma/space separated</label>
+      <textarea id="motif-input" placeholder="GATA&#10;TATC&#10;CAG, GGC, TTTCA"></textarea>
+      <div class="controls">
+        <label class="checkbox-row"
+               title="Show the >r rotation offset and ~ reverse-complement marker, so the exact input rendering is recoverable from the canonical. Uncheck for the bare canonical motif only.">
+          <input type="checkbox" id="motif-symbols" checked>
+          <span>Rotation / RC symbols (&gt;r, ~)</span>
+        </label>
+        <button id="motif-btn">Convert</button>
+      </div>
+    </div>
+    <div id="motif-results"></div>
+  </div>
+
+  <div class="tab-panel" id="panel-lookup" hidden>
+    <div class="card">
+      <label class="field-label" for="lookup-filter">Canonical motif lookup — all 501 canonical motifs, k = 1–6</label>
+      <input type="text" class="filter" id="lookup-filter" placeholder="filter by any motif, e.g. CAG or AGAT">
+    </div>
+    <div id="lookup-table"></div>
+  </div>
 </div>
 
 <script>
@@ -1643,11 +1705,112 @@ function analyze() {
     buildHammingMatrices([...allFoundCanonicals].sort());
 }
 
-document.getElementById('run-btn').addEventListener('click', analyze);
+// ── Motif tool ────────────────────────────────────────────────────────────────
 
-// Ctrl/Cmd+Enter submits from the textarea
+/** Map a single motif to its canonical form. Reduces a non-primitive motif
+ *  (e.g. ATAT) to its repeat unit first. Returns null for empty input. */
+function canonicalizeMotif(raw) {
+  const m = raw.trim().toUpperCase();
+  if (!m) return null;
+  if ([...m].some(c => !'ACGT'.includes(c))) return {input: m, error: true};
+
+  let prim = m;
+  for (let p = 1; p < m.length; p++) {
+    if (m.length % p === 0 && m.slice(0, p).repeat(m.length / p) === m) { prim = m.slice(0, p); break; }
+  }
+  const rots = s => Array.from({length: s.length}, (_, i) => s.slice(i) + s.slice(0, i));
+  const canonical = [...rots(prim), ...rots(rcSeq(prim))].sort()[0];
+  let isRc, r;
+  if (rots(canonical).includes(prim)) { isRc = false; r = rotationOffset(prim, canonical); }
+  else                                { isRc = true;  r = rotationOffset(rcSeq(prim), canonical); }
+  const designation = (isRc ? '~' : '') + canonical + (r > 0 ? `>${r}` : '');
+  return {input: m, primitive: prim, canonical, isRc, r, designation, reduced: prim !== m};
+}
+
+function convertMotifs() {
+  const raw    = document.getElementById('motif-input').value.trim();
+  const showSym = document.getElementById('motif-symbols').checked;
+  const el     = document.getElementById('motif-results');
+  if (!raw) { el.innerHTML = ''; return; }
+
+  const rows = raw.split(/[\s,]+/).filter(Boolean).map(canonicalizeMotif).filter(Boolean);
+  const head = `<th>motif</th><th>canonical</th>${showSym ? '<th>designation</th>' : ''}`;
+  const body = rows.map(r => {
+    if (r.error)
+      return `<tr><td>${r.input}</td><td class="dim">invalid (ACGT only)</td>${showSym ? '<td class="dim">—</td>' : ''}</tr>`;
+    const note = r.reduced ? ` <span class="ce-meta">(= ${r.primitive}×${r.input.length / r.primitive.length})</span>` : '';
+    return `<tr><td class="mono">${r.input}${note}</td><td class="mono">${r.canonical}</td>`
+         + (showSym ? `<td class="mono">${r.designation}</td>` : '') + '</tr>';
+  }).join('');
+
+  el.innerHTML =
+    `<div class="table-section"><div class="table-head"><h2>Canonical motifs</h2></div>`
+    + `<div class="res-wrap"><table class="res-table"><thead><tr>${head}</tr></thead>`
+    + `<tbody>${body}</tbody></table></div></div>`;
+}
+
+// ── Lookup table (all canonical motifs) ─────────────────────────────────────────
+
+let lookupBuilt = false;
+function buildLookupTable() {
+  const rows = Object.keys(canonicalToVariants)
+    .sort((a, b) => a.length - b.length || (a < b ? -1 : 1))
+    .map(canon => {
+      const variants = canonicalToVariants[canon];
+      return {
+        k: canon.length, canon,
+        fwd: variants.filter(v => !motifToCanonical[v].isRc),
+        rc:  variants.filter(v =>  motifToCanonical[v].isRc),
+      };
+    });
+  const body = rows.map(r =>
+    `<tr data-motifs="${[r.canon, ...r.fwd, ...r.rc].join(' ')}">`
+    + `<td>${r.k}</td><td class="mono"><b>${r.canon}</b></td>`
+    + `<td class="mono">${r.fwd.join('  ')}</td>`
+    + `<td class="mono">${r.rc.join('  ') || '—'}</td></tr>`).join('');
+  document.getElementById('lookup-table').innerHTML =
+    `<div class="table-section"><div class="lookup-wrap"><table class="res-table lookup"><thead>`
+    + `<tr><th>k</th><th>canonical</th><th>forward rotations</th><th>RC rotations</th></tr></thead>`
+    + `<tbody>${body}</tbody></table></div>`
+    + `<div class="lookup-count" id="lookup-count">${rows.length} canonical motifs</div></div>`;
+  lookupBuilt = true;
+}
+
+function filterLookup() {
+  const q = document.getElementById('lookup-filter').value.trim().toUpperCase();
+  let shown = 0;
+  document.querySelectorAll('#lookup-table tbody tr').forEach(tr => {
+    // whole-motif match: a query motif finds the class it belongs to
+    const hit = !q || tr.dataset.motifs.split(' ').includes(q);
+    tr.hidden = !hit;
+    if (hit) shown++;
+  });
+  const c = document.getElementById('lookup-count');
+  if (c) c.textContent = q ? `${shown} of 501 canonical motifs` : '501 canonical motifs';
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────────
+
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => { p.hidden = p.id !== 'panel-' + name; });
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  if (name === 'lookup' && !lookupBuilt) buildLookupTable();
+}
+
+document.querySelectorAll('.tab').forEach(t =>
+  t.addEventListener('click', () => showTab(t.dataset.tab)));
+
+document.getElementById('run-btn').addEventListener('click', analyze);
+document.getElementById('motif-btn').addEventListener('click', convertMotifs);
+document.getElementById('motif-symbols').addEventListener('change', convertMotifs);
+document.getElementById('lookup-filter').addEventListener('input', filterLookup);
+
+// Ctrl/Cmd+Enter submits from the textareas
 document.getElementById('seq-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) analyze();
+});
+document.getElementById('motif-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) convertMotifs();
 });
 
 loadLookup();

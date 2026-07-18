@@ -134,6 +134,41 @@ def build_lookup(k_max: int = 6):
 MOTIF_TO_CANONICAL, CANONICAL_TO_VARIANTS = build_lookup()
 
 
+def canonicalize_motif(motif: str):
+    """Map a single motif to its canonical form.
+
+    Returns a dict {input, primitive, canonical, is_rc, r, reduced} or None if
+    the motif is empty or contains non-ACGT characters. A non-primitive motif
+    (e.g. ATAT) is first reduced to its repeat unit (AT); `reduced` records this.
+    Works for any length, matching the bundled lookup for k <= 6.
+    """
+    m = motif.strip().upper()
+    if not m or any(c not in 'ACGT' for c in m):
+        return None
+
+    prim = m
+    for period in range(1, len(m)):
+        if len(m) % period == 0 and m == m[:period] * (len(m) // period):
+            prim = m[:period]
+            break
+
+    group = set(get_rotations(prim)) | set(get_rotations(reverse_complement(prim)))
+    canonical = min(group)
+    if prim in get_rotations(canonical):
+        is_rc, r = False, rotation_offset(prim, canonical)
+    else:
+        is_rc, r = True, rotation_offset(reverse_complement(prim), canonical)
+
+    return {'input': m, 'primitive': prim, 'canonical': canonical,
+            'is_rc': is_rc, 'r': r, 'reduced': prim != m}
+
+
+def motif_designation(info: dict) -> str:
+    """The canonical designation with rotation/RC symbols, e.g. 'AGAT>1', '~AGAT>3'."""
+    return (('~' if info['is_rc'] else '') + info['canonical']
+            + (f">{info['r']}" if info['r'] else ''))
+
+
 # ── Core algorithm: find repeat stretches ─────────────────────────────────────
 
 def find_stretches(seq: str, min_repeats: int) -> list:
@@ -576,6 +611,13 @@ def main() -> None:
     ce.add_argument('--list-markers', action='store_true',
                     help='print the marker panel and exit')
 
+    mo = p.add_argument_group('motif tools')
+    mo.add_argument('--motif', action='store_true',
+                    help='treat each input token as a motif and print its '
+                         'canonical form (bare canonical and the >r/~ designation)')
+    mo.add_argument('--list-canonicals', action='store_true',
+                    help='print the full canonical motif lookup (k = 1-6) and exit')
+
     adv = p.add_argument_group('advanced')
     adv.add_argument('--trim-front', type=int, default=0, metavar='N',
                      help='remove N bases from the start of each sequence before analysis')
@@ -591,6 +633,38 @@ def main() -> None:
     p.add_argument('--color', choices=('auto', 'always', 'never'), default='auto',
                    help='ANSI colour in --visual / --matrix output (default: auto)')
     args = p.parse_args()
+
+    if args.list_canonicals:
+        print(f'# {len(CANONICAL_TO_VARIANTS)} canonical motifs (k = 1-6): '
+              f'canonical = lexicographically smallest of all rotations and '
+              f'reverse-complement rotations')
+        print(f'{"k":>2}  {"canonical":<9} {"forward rotations":<43} rc rotations')
+        for canonical in sorted(CANONICAL_TO_VARIANTS, key=lambda c: (len(c), c)):
+            variants = CANONICAL_TO_VARIANTS[canonical]
+            fwd = [v for v in variants if not MOTIF_TO_CANONICAL[v][1]]
+            rc = [v for v in variants if MOTIF_TO_CANONICAL[v][1]]
+            print(f'{len(canonical):>2}  {canonical:<9} '
+                  f'{" ".join(fwd):<43} {" ".join(rc) or "-"}')
+        return
+
+    if args.motif:
+        inputs = gather_inputs(args)
+        if not inputs:
+            p.error('no motif given (pass motifs, --input FILE, or pipe via stdin)')
+        tokens = [t for line in inputs for t in re.split(r'[,\s]+', line.strip()) if t]
+        print(f'{"motif":<12}{"canonical":<12}designation')
+        for tok in tokens:
+            info = canonicalize_motif(tok)
+            if info is None:
+                print(f'{tok.upper():<12}{"-":<12}(invalid: motifs are ACGT only)')
+                continue
+            note = ''
+            if info['reduced']:
+                n = len(info['input']) // len(info['primitive'])
+                note = f"   ({info['input']} = {info['primitive']}x{n})"
+            print(f'{info["input"]:<12}{info["canonical"]:<12}'
+                  f'{motif_designation(info)}{note}')
+        return
 
     panel = None
     if args.ce or args.list_markers:
